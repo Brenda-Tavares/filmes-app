@@ -242,45 +242,85 @@ function renderizarApp(filmesLista, temaInfo) {
 
 // =========== CRIAR CARD DE FILME ===========
 function criarCardFilme(filme, index, corTema) {
-    // Cores baseadas no país
-    const cores = {
-        'Brasil': ['#2E8B57', '#006400'],    // Verde Brasil
-        'Índia': ['#FF9933', '#138808'],     // Laranja e Verde (bandeira Índia)
-        'Irã': ['#DA0000', '#239F40']        // Vermelho e Verde (bandeira Irã)
-    };
+    // Verifica se tem imagem válida
+    const temImagem = filme.cartaz_url && 
+                     (filme.cartaz_url.includes('tmdb.org') || 
+                      filme.cartaz_url.includes('unsplash.com') ||
+                      filme.cartaz_url.includes('http'));
     
-    const coresPais = cores[filme.pais] || [corTema, '#333'];
+    // Converte códigos de país para emojis
+    const bandeiraEmoji = filme.bandeira === 'BR' ? '🇧🇷' : 
+                          filme.bandeira === 'IN' ? '🇮🇳' : 
+                          filme.bandeira === 'IR' ? '🇮🇷' : '🎬';
     
     return `
         <div class="filme-card" data-index="${index}">
             <div class="filme-imagem" style="
-                background: linear-gradient(135deg, ${coresPais[0]}, ${coresPais[1]});
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-                min-height: 180px;
+                position: relative;
+                height: 200px;
+                overflow: hidden;
+                ${!temImagem ? `background: linear-gradient(135deg, ${corTema}40, ${corTema}70);` : ''}
             ">
-                <div style="font-size: 3rem; margin-bottom: 10px;">
-                    ${filme.bandeira === 'BR' ? '🇧🇷' : 
-                      filme.bandeira === 'IN' ? '🇮🇳' : 
-                      filme.bandeira === 'IR' ? '🇮🇷' : '🎬'}
-                </div>
+                ${temImagem ? `
+                    <!-- IMAGEM DO FILME -->
+                    <img src="${filme.cartaz_url}" 
+                         alt="${filme.titulo_pt}"
+                         style="
+                             width: 100%;
+                             height: 100%;
+                             object-fit: cover;
+                             position: absolute;
+                             top: 0;
+                             left: 0;
+                         "
+                         onerror="
+                             // Fallback se imagem não carregar
+                             this.style.display = 'none';
+                             this.parentElement.style.background = 'linear-gradient(135deg, ${corTema}40, ${corTema}70)';
+                         ">
+                    
+                    <!-- OVERLAY ESCURO PARA TEXTO LEGÍVEL -->
+                    <div style="
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7) 90%);
+                        z-index: 1;
+                    "></div>
+                ` : ''}
+                
+                <!-- CONTEÚDO SOBRE A IMAGEM -->
                 <div style="
-                    font-size: 1.1rem;
-                    font-weight: bold;
-                    background: rgba(255,255,255,0.2);
-                    padding: 8px 20px;
-                    border-radius: 20px;
-                    backdrop-filter: blur(5px);
-                    border: 2px solid rgba(255,255,255,0.3);
+                    position: absolute;
+                    bottom: 15px;
+                    left: 0;
+                    right: 0;
+                    text-align: center;
+                    color: white;
+                    z-index: 2;
+                    padding: 0 15px;
                 ">
-                    ${filme.pais}
-                </div>
-                <div style="margin-top: 10px; font-size: 0.9rem; opacity: 0.9;">
-                    ${filme.ano}
+                    <div style="
+                        font-size: 2rem;
+                        margin-bottom: 5px;
+                        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                    ">
+                        ${bandeiraEmoji}
+                    </div>
+                    <div style="
+                        font-size: 1rem;
+                        font-weight: bold;
+                        background: rgba(0,0,0,0.6);
+                        display: inline-block;
+                        padding: 5px 15px;
+                        border-radius: 15px;
+                        backdrop-filter: blur(4px);
+                        border: 1px solid rgba(255,255,255,0.2);
+                    ">
+                        ${filme.pais}
+                    </div>
                 </div>
             </div>
             
@@ -330,10 +370,20 @@ function mostrarDetalhesFilme(index) {
                 <div class="modal-body">
                     ${filme.cartaz_url ? `
                         <div style="text-align: center; margin-bottom: 1.5rem;">
-                            <img src="${filme.cartaz_url}" alt="${filme.titulo_pt}" 
-                                style="max-width: 250px; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.2);">
-                        </div>
-                    ` : ''}
+                             <img src="${filme.cartaz_url}" 
+                                 alt="${filme.titulo_pt}" 
+                                     style="
+                                    max-width: 100%;
+                                    max-height: 300px;
+                                    border-radius: 8px; 
+                                    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+                                    object-fit: contain;
+                                    background: #f0f0f0;
+                                    padding: 10px;
+                                "
+                                onerror="this.style.display='none'">
+                    </div>
+    ` : ''}
                     
                     <div style="margin-bottom: 2rem;">
                         <h3 style="color: ${corTema}; margin-bottom: 1rem;">📖 Sinopse</h3>
@@ -453,5 +503,3 @@ window.mostrarDetalhesFilme = mostrarDetalhesFilme;
 window.mudarTema = mudarTema;
 
 console.log('✅ Script carregado com sucesso! Pronto para iniciar...');
-
-
