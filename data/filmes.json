@@ -5,7 +5,7 @@
       "titulo_original": "Fire",
       "titulo_pt": "Fogo",
       "pais": "Índia",
-      "bandeira": "🇮🇳",
+      "bandeira": "🇮🇳", 
       "ano": 1996,
       "diretor": "Deepa Mehta",
       "sinopse": "Duas mulheres em casamentos infelizes descobrem amor uma pela outra em Nova Delhi, desafiando tradições familiares e religiosas na Índia conservadora dos anos 90.",
@@ -109,3 +109,4 @@
     }
   ]
 }
+
