@@ -10,7 +10,7 @@ console.log('%c🎬 App de recomendações de filmes', 'color: #666;');
 
 // =========== ESTADO DA APLICAÇÃO ===========
 let estado = {
-    temaAtivo: 'cinema-brasileiro', 
+    temaAtivo: 'cinema-brasileiro', // AGORA COMEÇA COM BRASIL!
     filmes: {},
     temas: [],
     elementos: {}
@@ -242,46 +242,88 @@ function renderizarApp(filmesLista, temaInfo) {
 
 // =========== CRIAR CARD DE FILME ===========
 function criarCardFilme(filme, index, corTema) {
+    // Fallback se não tiver imagem
+    const temImagem = filme.cartaz_url && filme.cartaz_url.includes('tmdb.org');
+    
     return `
-    <div class="filme-card" data-index="${index}">
-        <div class="filme-imagem" style="
-            background: linear-gradient(45deg, ${corTema}20, ${corTema}40);
-            position: relative;
-            overflow: hidden;
-        ">
-            ${filme.cartaz_url ? `
-                <img src="${filme.cartaz_url}" 
-                     alt="${filme.titulo_pt}"
-                     style="
-                         width: 100%;
-                         height: 100%;
-                         object-fit: cover;
-                         position: absolute;
-                         top: 0;
-                         left: 0;
-                         opacity: 0.9;
-                     "
-                     onerror="this.style.display='none'">
-            ` : ''}
-            
-            <div style="
+        <div class="filme-card" data-index="${index}">
+            <div class="filme-imagem" style="
+                background: ${temImagem ? 'transparent' : `linear-gradient(45deg, ${corTema}40, ${corTema}60)`};
                 position: relative;
-                z-index: 2;
-                text-align: center;
-                padding: 20px;
-                color: white;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                height: 200px;
+                overflow: hidden;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             ">
-                <div class="bandeira-grande" style="font-size: 2.5rem; margin-bottom: 10px;">
-                    ${filme.bandeira || '🎬'}
+                ${temImagem ? `
+                    <img src="${filme.cartaz_url}" 
+                         alt="${filme.titulo_pt}"
+                         style="
+                             width: 100%;
+                             height: 100%;
+                             object-fit: cover;
+                             position: absolute;
+                             top: 0;
+                             left: 0;
+                         "
+                         onerror="
+                             this.style.display='none';
+                             this.parentElement.style.background = 'linear-gradient(45deg, ${corTema}40, ${corTema}60)';
+                         ">
+                ` : ''}
+                
+                <div style="
+                    position: ${temImagem ? 'absolute' : 'relative'};
+                    bottom: 0;
+                    left: 0;
+                    right: 0;
+                    background: ${temImagem ? 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' : 'transparent'};
+                    padding: ${temImagem ? '20px 15px 10px' : '0'};
+                    color: white;
+                    text-align: center;
+                    z-index: 2;
+                ">
+                    <div style="font-size: ${temImagem ? '1.8rem' : '3rem'}; margin-bottom: 5px;">
+                        ${filme.bandeira || '🎬'}
+                    </div>
+                    <div style="
+                        font-size: 0.9rem; 
+                        font-weight: bold;
+                        background: ${temImagem ? 'rgba(0,0,0,0.7)' : corTema + '80'};
+                        display: inline-block;
+                        padding: 4px 12px;
+                        border-radius: 4px;
+                        backdrop-filter: blur(2px);
+                    ">
+                        ${filme.pais}
+                    </div>
                 </div>
-                <div style="font-size: 1rem; font-weight: bold; background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px;">
-                    ${filme.pais}
+            </div>
+            
+            <div class="filme-info">
+                <h3 class="filme-titulo">${filme.titulo_pt}</h3>
+                <p class="filme-detalhes">
+                    ${filme.diretor} • ${filme.ano}
+                </p>
+                
+                <p class="filme-sinopse">
+                    ${filme.sinopse.substring(0, 120)}...
+                </p>
+                
+                <div class="filme-rodape">
+                    <div class="avaliacao">
+                        <span>⭐</span>
+                        <span>${filme.avaliacao_imdb || filme.avaliacao_tmdb || 'N/A'}/10</span>
+                    </div>
+                    
+                    <button class="btn-detalhes" data-index="${index}">
+                        Ver detalhes
+                    </button>
                 </div>
             </div>
         </div>
-        ...
-`;
+    `;
 }
 
 // =========== MOSTRAR DETALHES DO FILME ===========
@@ -444,4 +486,3 @@ console.log('✅ Script carregado com sucesso! Pronto para iniciar...');
     };
     return bandeiras[codigo] || '🎬';
     }
-
