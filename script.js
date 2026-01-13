@@ -59,7 +59,7 @@ async function carregarDados() {
         
         // 2. Carregar temas.json
         console.log('2. Buscando temas.json...');
-        const respostaTemas = await fetch('data/temas.json');
+        const respostaTemas = await fetch(`data/temas.json?v=${Date.now()}`);
         
         if (!respostaTemas.ok) {
             throw new Error(`Erro HTTP ${respostaTemas.status} - temas.json`);
@@ -503,3 +503,4 @@ window.mostrarDetalhesFilme = mostrarDetalhesFilme;
 window.mudarTema = mudarTema;
 
 console.log('✅ Script carregado com sucesso! Pronto para iniciar...');
+
