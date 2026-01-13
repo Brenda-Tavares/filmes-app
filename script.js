@@ -245,7 +245,7 @@ function criarCardFilme(filme, index, corTema) {
     return `
         <div class="filme-card" data-index="${index}">
             <div class="filme-imagem" style="background: linear-gradient(45deg, ${corTema}20, ${corTema}40);">
-                <div class="bandeira-grande">${filme.bandeira || '🎬'}</div>
+                <div class="bandeira-grande">${converterParaBandeira(filme.bandeira)}</div>
                 <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">${filme.pais}</div>
             </div>
             
@@ -418,3 +418,19 @@ window.mostrarDetalhesFilme = mostrarDetalhesFilme;
 window.mudarTema = mudarTema;
 
 console.log('✅ Script carregado com sucesso! Pronto para iniciar...');
+
+/* ======= FORMATAÇÃO PARA APARÊNCIA DE BANDEIRAS ======= */
+    function converterParaBandeira(codigo) {
+    const bandeiras = {
+        'BR': '🇧🇷',
+        'IN': '🇮🇳', 
+        'IR': '🇮🇷',
+        'US': '🇺🇸',
+        'FR': '🇫🇷',
+        'JP': '🇯🇵',
+        'KR': '🇰🇷',
+        'MX': '🇲🇽',
+        'AR': '🇦🇷'
+    };
+    return bandeiras[codigo] || '🎬';
+    }
