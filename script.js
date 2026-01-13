@@ -470,19 +470,5 @@ window.mostrarDetalhesFilme = mostrarDetalhesFilme;
 window.mudarTema = mudarTema;
 
 console.log('✅ Script carregado com sucesso! Pronto para iniciar...');
-
-/* ======= FORMATAÇÃO PARA APARÊNCIA DE BANDEIRAS ======= */
-    function converterParaBandeira(codigo) {
-    const bandeiras = {
-        'BR': '🇧🇷',
-        'IN': '🇮🇳', 
-        'IR': '🇮🇷',
-        'US': '🇺🇸',
-        'FR': '🇫🇷',
-        'JP': '🇯🇵',
-        'KR': '🇰🇷',
-        'MX': '🇲🇽',
-        'AR': '🇦🇷'
-    };
-    return bandeiras[codigo] || '🎬';
     }
+
