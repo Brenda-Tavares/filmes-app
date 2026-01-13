@@ -10,7 +10,7 @@ console.log('%c🎬 App de recomendações de filmes', 'color: #666;');
 
 // =========== ESTADO DA APLICAÇÃO ===========
 let estado = {
-    temaAtivo: 'cinema-brasileiro', 
+    temaAtivo: 'cinema-brasileiro',
     filmes: {},
     temas: [],
     elementos: {}
@@ -242,62 +242,45 @@ function renderizarApp(filmesLista, temaInfo) {
 
 // =========== CRIAR CARD DE FILME ===========
 function criarCardFilme(filme, index, corTema) {
-    // Fallback se não tiver imagem
-    const temImagem = filme.cartaz_url && filme.cartaz_url.includes('tmdb.org');
+    // Cores baseadas no país
+    const cores = {
+        'Brasil': ['#2E8B57', '#006400'],    // Verde Brasil
+        'Índia': ['#FF9933', '#138808'],     // Laranja e Verde (bandeira Índia)
+        'Irã': ['#DA0000', '#239F40']        // Vermelho e Verde (bandeira Irã)
+    };
+    
+    const coresPais = cores[filme.pais] || [corTema, '#333'];
     
     return `
         <div class="filme-card" data-index="${index}">
             <div class="filme-imagem" style="
-                background: ${temImagem ? 'transparent' : `linear-gradient(45deg, ${corTema}40, ${corTema}60)`};
-                position: relative;
-                height: 200px;
-                overflow: hidden;
+                background: linear-gradient(135deg, ${coresPais[0]}, ${coresPais[1]});
                 display: flex;
+                flex-direction: column;
                 align-items: center;
                 justify-content: center;
+                color: white;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+                min-height: 180px;
             ">
-                ${temImagem ? `
-                    <img src="${filme.cartaz_url}" 
-                         alt="${filme.titulo_pt}"
-                         style="
-                             width: 100%;
-                             height: 100%;
-                             object-fit: cover;
-                             position: absolute;
-                             top: 0;
-                             left: 0;
-                         "
-                         onerror="
-                             this.style.display='none';
-                             this.parentElement.style.background = 'linear-gradient(45deg, ${corTema}40, ${corTema}60)';
-                         ">
-                ` : ''}
-                
+                <div style="font-size: 3rem; margin-bottom: 10px;">
+                    ${filme.bandeira === 'BR' ? '🇧🇷' : 
+                      filme.bandeira === 'IN' ? '🇮🇳' : 
+                      filme.bandeira === 'IR' ? '🇮🇷' : '🎬'}
+                </div>
                 <div style="
-                    position: ${temImagem ? 'absolute' : 'relative'};
-                    bottom: 0;
-                    left: 0;
-                    right: 0;
-                    background: ${temImagem ? 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)' : 'transparent'};
-                    padding: ${temImagem ? '20px 15px 10px' : '0'};
-                    color: white;
-                    text-align: center;
-                    z-index: 2;
+                    font-size: 1.1rem;
+                    font-weight: bold;
+                    background: rgba(255,255,255,0.2);
+                    padding: 8px 20px;
+                    border-radius: 20px;
+                    backdrop-filter: blur(5px);
+                    border: 2px solid rgba(255,255,255,0.3);
                 ">
-                    <div style="font-size: ${temImagem ? '1.8rem' : '3rem'}; margin-bottom: 5px;">
-                        ${filme.bandeira || '🎬'}
-                    </div>
-                    <div style="
-                        font-size: 0.9rem; 
-                        font-weight: bold;
-                        background: ${temImagem ? 'rgba(0,0,0,0.7)' : corTema + '80'};
-                        display: inline-block;
-                        padding: 4px 12px;
-                        border-radius: 4px;
-                        backdrop-filter: blur(2px);
-                    ">
-                        ${filme.pais}
-                    </div>
+                    ${filme.pais}
+                </div>
+                <div style="margin-top: 10px; font-size: 0.9rem; opacity: 0.9;">
+                    ${filme.ano}
                 </div>
             </div>
             
@@ -471,5 +454,3 @@ window.mudarTema = mudarTema;
 
 console.log('✅ Script carregado com sucesso! Pronto para iniciar...');
     }
-
-
