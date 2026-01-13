@@ -1,0 +1,20 @@
+{
+  "temas": [
+    {
+      "id": "cinema-brasileiro",
+      "nome": "🇧🇷 Cinema Brasileiro",
+      "descricao": "Clássicos e obras-primas da cinematografia nacional",
+      "cor": "#2E8B57",
+      "icone": "🎭",
+      "total_filmes": 3
+    },
+    {
+      "id": "amores-proibidos",
+      "nome": "💔 Amores Impossíveis",
+      "descricao": "Relacionamentos que desafiam normas sociais em diferentes culturas",
+      "cor": "#d32f2f",
+      "icone": "❤️‍🔥",
+      "total_filmes": 2
+    }
+  ]
+}
