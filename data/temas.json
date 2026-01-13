@@ -10,11 +10,12 @@
     },
     {
       "id": "amores-proibidos",
-      "nome": "💔 Amores Impossíveis",
+      "nome": "Amores Impossíveis",
       "descricao": "Relacionamentos que desafiam normas sociais em diferentes culturas",
       "cor": "#d32f2f",
-      "icone": "❤️‍🔥",
+      "icone": "💔🔥",
       "total_filmes": 2
     }
   ]
+
 }
