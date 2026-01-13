@@ -504,3 +504,6 @@ window.mudarTema = mudarTema;
 
 console.log('✅ Script carregado com sucesso! Pronto para iniciar...');
 
+console.log('%c✨ ALABASTER DEVELOPER ✨', 'font-size: 20px; color: #d32f2f; font-weight: bold;');
+console.log('%cApp desenvolvido com 💜 por Brenda Tavares', 'color: #666;');
+console.log('%cgithub.com/Brenda-Tavares', 'color: #2E8B57; font-weight: bold;');
