@@ -243,35 +243,45 @@ function renderizarApp(filmesLista, temaInfo) {
 // =========== CRIAR CARD DE FILME ===========
 function criarCardFilme(filme, index, corTema) {
     return `
-        <div class="filme-card" data-index="${index}">
-            <div class="filme-imagem" style="background: linear-gradient(45deg, ${corTema}20, ${corTema}40);">
-                <div class="bandeira-grande">${converterParaBandeira(filme.bandeira)}</div>
-                <div style="font-size: 0.9rem; color: #666; margin-top: 5px;">${filme.pais}</div>
-            </div>
+    <div class="filme-card" data-index="${index}">
+        <div class="filme-imagem" style="
+            background: linear-gradient(45deg, ${corTema}20, ${corTema}40);
+            position: relative;
+            overflow: hidden;
+        ">
+            ${filme.cartaz_url ? `
+                <img src="${filme.cartaz_url}" 
+                     alt="${filme.titulo_pt}"
+                     style="
+                         width: 100%;
+                         height: 100%;
+                         object-fit: cover;
+                         position: absolute;
+                         top: 0;
+                         left: 0;
+                         opacity: 0.9;
+                     "
+                     onerror="this.style.display='none'">
+            ` : ''}
             
-            <div class="filme-info">
-                <h3 class="filme-titulo">${filme.titulo_pt}</h3>
-                <p class="filme-detalhes">
-                    ${filme.diretor} • ${filme.ano}
-                </p>
-                
-                <p class="filme-sinopse">
-                    ${filme.sinopse.substring(0, 120)}...
-                </p>
-                
-                <div class="filme-rodape">
-                    <div class="avaliacao">
-                        <span>⭐</span>
-                        <span>${filme.avaliacao_imdb || filme.avaliacao_tmdb || 'N/A'}/10</span>
-                    </div>
-                    
-                    <button class="btn-detalhes" data-index="${index}">
-                        Ver detalhes
-                    </button>
+            <div style="
+                position: relative;
+                z-index: 2;
+                text-align: center;
+                padding: 20px;
+                color: white;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            ">
+                <div class="bandeira-grande" style="font-size: 2.5rem; margin-bottom: 10px;">
+                    ${filme.bandeira || '🎬'}
+                </div>
+                <div style="font-size: 1rem; font-weight: bold; background: rgba(0,0,0,0.6); padding: 5px 10px; border-radius: 5px;">
+                    ${filme.pais}
                 </div>
             </div>
         </div>
-    `;
+        ...
+`;
 }
 
 // =========== MOSTRAR DETALHES DO FILME ===========
