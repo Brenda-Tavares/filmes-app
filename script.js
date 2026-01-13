@@ -10,7 +10,7 @@ console.log('%c🎬 App de recomendações de filmes', 'color: #666;');
 
 // =========== ESTADO DA APLICAÇÃO ===========
 let estado = {
-    temaAtivo: 'cinema-brasileiro', // AGORA COMEÇA COM BRASIL!
+    temaAtivo: 'cinema-brasileiro', 
     filmes: {},
     temas: [],
     elementos: {}
@@ -444,3 +444,4 @@ console.log('✅ Script carregado com sucesso! Pronto para iniciar...');
     };
     return bandeiras[codigo] || '🎬';
     }
+
