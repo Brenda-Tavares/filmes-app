@@ -1,30 +1,30 @@
 /**
- * 🎬 ENCONTRE UM FILME PARA ASSISTIR • FIND A MOVIE TO WATCH
- * 👩💻 Desenvolvido por Alabaster Developer
- * 📅 2026 • 
- * 🐙 github.com/Brenda-Tavares
+ * 🎬 CineWorld - Recomendações de Filmes • Desenvolvido por Alabaster Developer
+ * 🌍 Agora com TODOS os países do mundo!
  */
 
-console.log('%c👩💻 Alabaster Developer', 'color: #d32f2f; font-weight: bold; font-size: 14px;');
-console.log('%c🎬 App de recomendações de filmes', 'color: #666;');
+console.log('%c🌍 CineWorld - Recomendações de Filmes', 'color: #d32f2f; font-weight: bold; font-size: 16px;');
+
+// =========== CONFIGURAÇÃO ===========
+const API_BASE = 'http://localhost:3001/api';
 
 // =========== ESTADO DA APLICAÇÃO ===========
 let estado = {
     temaAtivo: 'cinema-brasileiro',
     filmes: {},
     temas: [],
+    paises: [], // NOVO: Lista de países
+    modo: 'temas', // 'temas' ou 'paises'
     elementos: {}
 };
 
 // =========== QUANDO A PÁGINA CARREGAR ===========
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM carregado - INICIANDO APP');
+    console.log('🌐 DOM carregado - INICIANDO APP GLOBAL');
     
-    // Inicializar elementos
     inicializarElementos();
-    
-    // Carregar dados
-    carregarDados();
+    iniciarTema();
+    carregarDadosIniciais();
 });
 
 // =========== INICIALIZAR ELEMENTOS DOM ===========
@@ -40,93 +40,183 @@ function inicializarElementos() {
     };
 }
 
-// =========== CARREGAR DADOS ===========
-async function carregarDados() {
-    console.log('📂 Carregando dados JSON...');
+// =========== TEMA ESCURO/CLARO ===========
+function iniciarTema() {
+    const temaSalvo = localStorage.getItem('tema') || 'auto';
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    try {
-        // 1. Carregar filmes.json
-        console.log('1. Buscando filmes.json...');
-        const respostaFilmes = await fetch('data/filmes.json');
-        
-        if (!respostaFilmes.ok) {
-            throw new Error(`Erro HTTP ${respostaFilmes.status} - filmes.json`);
-        }
-        
-        const dadosFilmes = await respostaFilmes.json();
-        console.log('✅ filmes.json carregado');
-        console.log('   Temas encontrados:', Object.keys(dadosFilmes));
-        
-        // 2. Carregar temas.json
-        console.log('2. Buscando temas.json...');
-        const respostaTemas = await fetch(`data/temas.json?v=${Date.now()}`);
-        
-        if (!respostaTemas.ok) {
-            throw new Error(`Erro HTTP ${respostaTemas.status} - temas.json`);
-        }
-        
-        const dadosTemas = await respostaTemas.json();
-        console.log('✅ temas.json carregado');
-        console.log('   Temas:', dadosTemas.temas?.map(t => t.id));
-        
-        // 3. Atualizar estado
-        estado.filmes = dadosFilmes;
-        estado.temas = dadosTemas.temas || [];
-        
-        // 4. LOG DETALHADO
-        console.log('📊 DETALHES DOS DADOS:');
-        estado.temas.forEach(tema => {
-            const qtd = estado.filmes[tema.id]?.length || 0;
-            console.log(`   ${tema.id}: ${qtd} filme(s) - "${tema.nome}"`);
-        });
-        
-        // 5. Verificar se tema brasileiro existe
-        const temaBR = estado.temas.find(t => t.id === 'cinema-brasileiro');
-        if (!temaBR) {
-            console.error('❌ ERRO CRÍTICO: Tema "cinema-brasileiro" não encontrado!');
-            console.log('Temas disponíveis:', estado.temas.map(t => t.id));
-        } else {
-            console.log('✅ Tema brasileiro encontrado:', temaBR);
-        }
-        
-        // 6. Mostrar navegação
-        estado.elementos.navTemas.style.display = 'block';
-        
-        // 7. Renderizar navegação de temas
-        renderizarNavegacaoTemas();
-        
-        // 8. Carregar filmes do tema ativo
-        carregarFilmesTemaAtivo();
-        
-    } catch (erro) {
-        console.error('❌ Erro ao carregar dados:', erro);
-        mostrarErro(`Não foi possível carregar os dados: ${erro.message}`);
+    if (temaSalvo === 'dark' || (temaSalvo === 'auto' && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'light');
     }
 }
 
-// =========== RENDERIZAR NAVEGAÇÃO DE TEMAS ===========
-function renderizarNavegacaoTemas() {
-    console.log('🎨 Renderizando botões de temas...');
+// =========== CARREGAR DADOS INICIAIS ===========
+async function carregarDadosIniciais() {
+    console.log('🌐 Iniciando carregamento...');
+    
+    try {
+        // 1. Carrega os temas FIXOS (Brasil + Internacionais)
+        console.log('1. Carregando temas fixos...');
+        const respostaTemas = await fetch('data/temas.json');
+        const temasData = await respostaTemas.json();
+        estado.temas = temasData.temas || [];
+        
+        // 2. Carrega filmes brasileiros da API
+        console.log('2. Carregando filmes brasileiros...');
+        const respostaBR = await fetch(`${API_BASE}/filmes/brasileiros`);
+        const dadosBR = await respostaBR.json();
+        
+        if (dadosBR.sucesso) {
+            estado.filmes['cinema-brasileiro'] = dadosBR.filmes || [];
+        }
+        
+        // 3. Carrega filmes internacionais da API
+        console.log('3. Carregando filmes internacionais...');
+        const respostaINT = await fetch(`${API_BASE}/filmes/internacionais`);
+        const dadosINT = await respostaINT.json();
+        
+        if (dadosINT.sucesso) {
+            estado.filmes['amores-proibidos'] = dadosINT.filmes || [];
+        }
+        
+        // 4. Carrega lista de países da API
+        console.log('4. Carregando lista de países...');
+        await carregarListaPaises();
+        
+        // 5. Mostra navegação completa
+        estado.elementos.navTemas.style.display = 'block';
+        renderizarNavegacaoCompleta();
+        
+        // 6. Carrega o tema ativo
+        carregarFilmesTemaAtivo();
+        
+        // 7. Esconde loading, mostra app
+        estado.elementos.loading.style.display = 'none';
+        estado.elementos.app.style.display = 'block';
+        
+        console.log('✅ Sistema global carregado!');
+        console.log(`   🎭 Temas: ${estado.temas.length}`);
+        console.log(`   🌍 Países: ${estado.paises.length}`);
+        
+    } catch (erro) {
+        console.error('❌ Erro inicial:', erro);
+        mostrarErro(`
+            <h3>⚠️ Problema de conexão</h3>
+            <p>Não foi possível conectar ao servidor.</p>
+            <p><strong>Dica:</strong> Certifique-se que o backend está rodando na porta 3001</p>
+            <button onclick="location.reload()" class="btn-detalhes">
+                🔄 Tentar novamente
+            </button>
+        `);
+    }
+}
+
+// =========== CARREGAR LISTA DE PAÍSES ===========
+async function carregarListaPaises() {
+    try {
+        const resposta = await fetch(`${API_BASE}/paises`);
+        const dados = await resposta.json();
+        
+        if (dados.sucesso) {
+            estado.paises = dados.paises || [];
+            console.log(`✅ ${estado.paises.length} países carregados`);
+        } else {
+            console.warn('⚠️ Não foi possível carregar países');
+            estado.paises = [];
+        }
+    } catch (erro) {
+        console.warn('⚠️ Erro ao carregar países:', erro);
+        estado.paises = [];
+    }
+}
+
+// =========== RENDERIZAR NAVEGAÇÃO COMPLETA ===========
+function renderizarNavegacaoCompleta() {
+    console.log('🎨 Renderizando navegação completa...');
     
     const container = estado.elementos.temasBotoes;
     container.innerHTML = '';
     
+    // 1. CABEÇALHO DA SEÇÃO
+    const cabecalho = document.createElement('div');
+    cabecalho.className = 'navegacao-cabecalho';
+    cabecalho.innerHTML = `
+        <h3 style="margin-bottom: 10px;">🎭 Explorar por:</h3>
+        <div class="modo-botoes" style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button class="btn-modo ${estado.modo === 'temas' ? 'ativo' : ''}" 
+                    data-modo="temas" 
+                    style="padding: 8px 16px; border-radius: 20px; border: 2px solid var(--vermelho); background: ${estado.modo === 'temas' ? 'var(--vermelho)' : 'transparent'}; color: ${estado.modo === 'temas' ? 'white' : 'var(--text-primary)'};">
+                🎬 Temas
+            </button>
+            <button class="btn-modo ${estado.modo === 'paises' ? 'ativo' : ''}" 
+                    data-modo="paises"
+                    style="padding: 8px 16px; border-radius: 20px; border: 2px solid var(--azul); background: ${estado.modo === 'paises' ? 'var(--azul)' : 'transparent'}; color: ${estado.modo === 'paises' ? 'white' : 'var(--text-primary)'};">
+                🌍 Países (${estado.paises.length})
+            </button>
+        </div>
+    `;
+    container.appendChild(cabecalho);
+    
+    // 2. CONTAINER DINÂMICO
+    const conteudoContainer = document.createElement('div');
+    conteudoContainer.id = 'navegacaoConteudo';
+    container.appendChild(conteudoContainer);
+    
+    // 3. ADICIONAR EVENTOS AOS BOTÕES DE MODO
+    document.querySelectorAll('.btn-modo').forEach(botao => {
+        botao.addEventListener('click', function() {
+            const novoModo = this.dataset.modo;
+            console.log(`🔄 Mudando modo: ${estado.modo} → ${novoModo}`);
+            estado.modo = novoModo;
+            
+            document.querySelectorAll('.btn-modo').forEach(b => {
+                b.classList.toggle('ativo', b.dataset.modo === novoModo);
+            });
+            
+            if (novoModo === 'temas') {
+                renderizarBotoesTemas();
+            } else {
+                renderizarBotoesPaises();
+            }
+        });
+    });
+    
+    // 4. RENDERIZAR CONTEÚDO INICIAL
+    if (estado.modo === 'temas') {
+        renderizarBotoesTemas();
+    } else {
+        renderizarBotoesPaises();
+    }
+}
+
+// =========== RENDERIZAR BOTÕES DE TEMAS ===========
+function renderizarBotoesTemas() {
+    const container = document.getElementById('navegacaoConteudo');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
     if (estado.temas.length === 0) {
-        container.innerHTML = '<p style="color: #666;">Nenhum tema encontrado</p>';
+        container.innerHTML = '<p style="color: var(--text-secondary);">Nenhum tema encontrado</p>';
         return;
     }
     
+    const grid = document.createElement('div');
+    grid.className = 'temas-grid';
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
+    grid.style.gap = '15px';
+    
     estado.temas.forEach(tema => {
-        // Contar filmes neste tema
-        const qtdFilmes = estado.filmes[tema.id] ? estado.filmes[tema.id].length : 0;
-        
-        console.log(`   Criando botão: ${tema.id} (${qtdFilmes} filmes)`);
+        const qtdFilmes = estado.filmes[tema.id]?.length || 0;
         
         if (qtdFilmes > 0) {
             const botao = document.createElement('button');
             botao.className = `btn-tema ${tema.id === estado.temaAtivo ? 'ativo' : ''}`;
             botao.dataset.tema = tema.id;
-            botao.title = `Clique para ver ${qtdFilmes} filme(s)`;
+            botao.dataset.tipo = 'tema';
             
             botao.innerHTML = `
                 <span class="tema-icone">${tema.icone || '🎬'}</span>
@@ -136,46 +226,209 @@ function renderizarNavegacaoTemas() {
                 </div>
             `;
             
-            // Evento de clique
             botao.addEventListener('click', () => {
-                console.log(`🖱️ Clicou no tema: ${tema.id} - "${tema.nome}"`);
+                console.log(`🖱️ Clicou no tema: ${tema.id}`);
                 mudarTema(tema.id);
             });
             
-            container.appendChild(botao);
-        } else {
-            console.log(`   ⚠️ Tema ${tema.id} ignorado: 0 filmes`);
+            grid.appendChild(botao);
         }
     });
     
-    console.log(`✅ ${container.children.length} botões criados`);
+    container.appendChild(grid);
+}
+
+// =========== RENDERIZAR BOTÕES DE PAÍSES ===========
+function renderizarBotoesPaises() {
+    const container = document.getElementById('navegacaoConteudo');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (estado.paises.length === 0) {
+        container.innerHTML = `
+            <p style="color: var(--text-secondary); text-align: center; padding: 20px;">
+                🌍 Carregando países...
+                <br><small>Conectando à CineWorld - Recomendações de Filmes</small>
+            </p>
+        `;
+        
+        setTimeout(() => carregarListaPaises().then(() => {
+            if (estado.paises.length > 0) {
+                renderizarBotoesPaises();
+            }
+        }), 1000);
+        return;
+    }
+    
+    // CABEÇALHO DE PAÍSES
+    const cabecalhoPaises = document.createElement('div');
+    cabecalhoPaises.innerHTML = `
+        <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 0.9rem;">
+            <strong>${estado.paises.length} países</strong> disponíveis • Clique para explorar
+        </p>
+    `;
+    container.appendChild(cabecalhoPaises);
+    
+    // GRADE DE PAÍSES
+    const grid = document.createElement('div');
+    grid.className = 'paises-grid';
+    grid.style.display = 'grid';
+    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(120px, 1fr))';
+    grid.style.gap = '12px';
+    grid.style.maxHeight = '300px';
+    grid.style.overflowY = 'auto';
+    grid.style.padding = '10px';
+    grid.style.borderRadius = '8px';
+    grid.style.background = 'var(--card-bg)';
+    
+    estado.paises.forEach((pais) => {
+        const botao = document.createElement('button');
+        botao.className = `btn-pais ${estado.temaAtivo === `pais-${pais.codigo}` ? 'ativo' : ''}`;
+        botao.dataset.pais = pais.codigo;
+        botao.dataset.tipo = 'pais';
+        botao.title = `Explorar filmes de ${pais.nome}`;
+        
+        botao.innerHTML = `
+            <div style="font-size: 1.8rem; margin-bottom: 5px;">${pais.bandeira}</div>
+            <div style="font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${pais.nome}
+            </div>
+        `;
+        
+        botao.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px 5px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--card-bg);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 90px;
+        `;
+        
+        botao.addEventListener('mouseenter', () => {
+            botao.style.transform = 'translateY(-3px)';
+            botao.style.boxShadow = '0 5px 15px rgba(0,0,0,0.1)';
+            botao.style.borderColor = 'var(--azul)';
+        });
+        
+        botao.addEventListener('mouseleave', () => {
+            if (!botao.classList.contains('ativo')) {
+                botao.style.transform = 'translateY(0)';
+                botao.style.boxShadow = 'none';
+                botao.style.borderColor = 'var(--border-color)';
+            }
+        });
+        
+        botao.addEventListener('click', () => {
+            console.log(`🌍 Clicou no país: ${pais.codigo} - ${pais.nome}`);
+            carregarFilmesPorPais(pais.codigo, pais.nome, pais.bandeira);
+        });
+        
+        grid.appendChild(botao);
+    });
+    
+    container.appendChild(grid);
+    
+    // FOOTER INFORMATIVO
+    const footer = document.createElement('div');
+    footer.innerHTML = `
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 15px; text-align: center;">
+            ⚡ Dica: Use os botões acima para alternar entre <strong>Temas</strong> e <strong>Países</strong>
+        </p>
+    `;
+    container.appendChild(footer);
+}
+
+// =========== CARREGAR FILMES POR PAÍS ===========
+async function carregarFilmesPorPais(codigoPais, nomePais, bandeiraPais) {
+    console.log(`🎬 Carregando filmes do país: ${codigoPais} (${nomePais})`);
+    
+    estado.elementos.app.innerHTML = `
+        <div style="text-align: center; padding: 50px;">
+            <div style="font-size: 3rem; margin-bottom: 20px;">${bandeiraPais}</div>
+            <h2>Carregando filmes de ${nomePais}...</h2>
+            <p style="color: var(--text-secondary);">Buscando na CineWorld - Recomendações de Filmes</p>
+        </div>
+    `;
+    
+    try {
+        const resposta = await fetch(`${API_BASE}/filmes/pais/${codigoPais}`);
+        const dados = await resposta.json();
+        
+        if (dados.sucesso) {
+            estado.temaAtivo = `pais-${codigoPais}`;
+            
+            const temaVirtual = {
+                id: `pais-${codigoPais}`,
+                nome: `${bandeiraPais} Cinema ${nomePais}`,
+                descricao: `Filmes populares de ${nomePais}. ${dados.total_filmes} filmes disponíveis.`,
+                cor: '#1976d2',
+                icone: bandeiraPais
+            };
+            
+            renderizarApp(dados.filmes, temaVirtual);
+            atualizarBotoesAtivos(`pais-${codigoPais}`);
+            
+            console.log(`✅ ${dados.filmes.length} filmes carregados de ${nomePais}`);
+        } else {
+            throw new Error(dados.erro || 'Erro ao carregar filmes do país');
+        }
+        
+    } catch (erro) {
+        console.error(`❌ Erro ao carregar filmes do país ${codigoPais}:`, erro);
+        mostrarErro(`
+            <h3>⚠️ Não foi possível carregar filmes de ${nomePais}</h3>
+            <p>${erro.message}</p>
+            <button onclick="carregarFilmesTemaAtivo()" class="btn-detalhes">
+                ↩️ Voltar para temas
+            </button>
+        `);
+    }
+}
+
+// =========== ATUALIZAR BOTÕES ATIVOS ===========
+function atualizarBotoesAtivos(temaId) {
+    document.querySelectorAll('[data-tema]').forEach(botao => {
+        botao.classList.toggle('ativo', botao.dataset.tema === temaId);
+    });
+    
+    document.querySelectorAll('[data-pais]').forEach(botao => {
+        const paisId = `pais-${botao.dataset.pais}`;
+        botao.classList.toggle('ativo', paisId === temaId);
+        botao.style.borderColor = paisId === temaId ? 'var(--azul)' : 'var(--border-color)';
+        botao.style.background = paisId === temaId ? 'var(--azul-10)' : 'var(--card-bg)';
+    });
 }
 
 // =========== MUDAR TEMA ===========
 function mudarTema(novoTema) {
-    console.log(`🔄 MUDANDO TEMA: ${estado.temaAtivo} → ${novoTema}`);
+    console.log(`🔄 Mudando tema: ${estado.temaAtivo} → ${novoTema}`);
     
-    // Verificar se o tema existe
-    if (!estado.filmes[novoTema]) {
-        console.error(`❌ Tema ${novoTema} não existe nos filmes!`);
+    if (novoTema.startsWith('pais-')) {
         return;
     }
     
-    // Atualizar estado
+    if (!estado.filmes[novoTema]) {
+        console.error(`❌ Tema ${novoTema} não encontrado!`);
+        return;
+    }
+    
     estado.temaAtivo = novoTema;
-    
-    // Atualizar botões ativos
-    document.querySelectorAll('.btn-tema').forEach(botao => {
-        const isAtivo = botao.dataset.tema === novoTema;
-        botao.classList.toggle('ativo', isAtivo);
-    });
-    
-    // Carregar filmes do novo tema
+    atualizarBotoesAtivos(novoTema);
     carregarFilmesTemaAtivo();
 }
 
 // =========== CARREGAR FILMES DO TEMA ATIVO ===========
 function carregarFilmesTemaAtivo() {
+    if (estado.temaAtivo.startsWith('pais-')) {
+        return;
+    }
+    
     const filmesTema = estado.filmes[estado.temaAtivo] || [];
     const temaInfo = estado.temas.find(t => t.id === estado.temaAtivo);
     
@@ -183,26 +436,19 @@ function carregarFilmesTemaAtivo() {
     
     if (filmesTema.length === 0) {
         console.error(`❌ Nenhum filme no tema ${estado.temaAtivo}!`);
-        mostrarErro(`Nenhum filme encontrado para o tema "${temaInfo?.nome || estado.temaAtivo}"`);
+        mostrarErro(`Nenhum filme encontrado para "${temaInfo?.nome || estado.temaAtivo}"`);
         return;
     }
     
-    // Renderizar app
     renderizarApp(filmesTema, temaInfo);
-    
-    // Esconder loading, mostrar app
-    estado.elementos.loading.style.display = 'none';
-    estado.elementos.app.style.display = 'block';
 }
 
 // =========== RENDERIZAR APLICAÇÃO ===========
 function renderizarApp(filmesLista, temaInfo) {
     console.log(`🎨 Renderizando ${filmesLista.length} filmes...`);
     
-    // Cor do tema
     const corTema = temaInfo?.cor || '#d32f2f';
     
-    // Criar HTML do app
     let html = `
         <div class="secao-tema" id="secaoTema" style="border-left: 5px solid ${corTema};">
             <h2>${temaInfo ? temaInfo.nome : '🎬 Filmes Recomendados'}</h2>
@@ -212,7 +458,6 @@ function renderizarApp(filmesLista, temaInfo) {
         <div class="filmes-grid" id="filmesGrid">
     `;
     
-    // Adicionar cada filme
     filmesLista.forEach((filme, index) => {
         html += criarCardFilme(filme, index, corTema);
     });
@@ -220,21 +465,18 @@ function renderizarApp(filmesLista, temaInfo) {
     html += `
         </div>
         
-        <div class="footer-app" style="text-align: center; padding: 1.5rem; color: #666;">
+        <div class="footer-app" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">
             <p>🎭 ${filmesLista.length} filme${filmesLista.length !== 1 ? 's' : ''} encontrado${filmesLista.length !== 1 ? 's' : ''} em "${temaInfo?.nome || 'este tema'}"</p>
         </div>
     `;
     
-    // Atualizar DOM
     estado.elementos.app.innerHTML = html;
     
-    // Guardar referências
     estado.elementos.filmesGrid = document.getElementById('filmesGrid');
     estado.elementos.secaoTema = document.getElementById('secaoTema');
     
-    // Adicionar eventos aos botões
     document.querySelectorAll('.btn-detalhes').forEach((botao, index) => {
-        botao.addEventListener('click', () => mostrarDetalhesFilme(index));
+        botao.addEventListener('click', () => mostrarDetalhesFilme(index, filmesLista, temaInfo));
     });
     
     console.log(`✅ ${filmesLista.length} filmes renderizados`);
@@ -242,16 +484,7 @@ function renderizarApp(filmesLista, temaInfo) {
 
 // =========== CRIAR CARD DE FILME ===========
 function criarCardFilme(filme, index, corTema) {
-    // Verifica se tem imagem válida
-    const temImagem = filme.cartaz_url && 
-                     (filme.cartaz_url.includes('tmdb.org') || 
-                      filme.cartaz_url.includes('unsplash.com') ||
-                      filme.cartaz_url.includes('http'));
-    
-    // Converte códigos de país para emojis
-    const bandeiraEmoji = filme.bandeira === 'BR' ? '🇧🇷' : 
-                          filme.bandeira === 'IN' ? '🇮🇳' : 
-                          filme.bandeira === 'IR' ? '🇮🇷' : '🎬';
+    const temImagem = filme.cartaz_url || filme.cartaz;
     
     return `
         <div class="filme-card" data-index="${index}">
@@ -262,8 +495,7 @@ function criarCardFilme(filme, index, corTema) {
                 ${!temImagem ? `background: linear-gradient(135deg, ${corTema}40, ${corTema}70);` : ''}
             ">
                 ${temImagem ? `
-                    <!-- IMAGEM DO FILME -->
-                    <img src="${filme.cartaz_url}" 
+                    <img src="${filme.cartaz_url || filme.cartaz}" 
                          alt="${filme.titulo_pt}"
                          style="
                              width: 100%;
@@ -274,12 +506,10 @@ function criarCardFilme(filme, index, corTema) {
                              left: 0;
                          "
                          onerror="
-                             // Fallback se imagem não carregar
-                             this.style.display = 'none';
+                             this.style.display='none';
                              this.parentElement.style.background = 'linear-gradient(135deg, ${corTema}40, ${corTema}70)';
                          ">
                     
-                    <!-- OVERLAY ESCURO PARA TEXTO LEGÍVEL -->
                     <div style="
                         position: absolute;
                         top: 0;
@@ -291,7 +521,6 @@ function criarCardFilme(filme, index, corTema) {
                     "></div>
                 ` : ''}
                 
-                <!-- CONTEÚDO SOBRE A IMAGEM -->
                 <div style="
                     position: absolute;
                     bottom: 15px;
@@ -307,7 +536,7 @@ function criarCardFilme(filme, index, corTema) {
                         margin-bottom: 5px;
                         text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
                     ">
-                        ${bandeiraEmoji}
+                        ${filme.bandeira || '🎬'}
                     </div>
                     <div style="
                         font-size: 1rem;
@@ -327,17 +556,17 @@ function criarCardFilme(filme, index, corTema) {
             <div class="filme-info">
                 <h3 class="filme-titulo">${filme.titulo_pt}</h3>
                 <p class="filme-detalhes">
-                    ${filme.diretor} • ${filme.ano}
+                    ${filme.diretor || 'Diretor não disponível'} • ${filme.ano}
                 </p>
                 
                 <p class="filme-sinopse">
-                    ${filme.sinopse.substring(0, 120)}...
+                    ${filme.sinopse?.substring(0, 120) || 'Sinopse não disponível.'}...
                 </p>
                 
                 <div class="filme-rodape">
                     <div class="avaliacao">
                         <span>⭐</span>
-                        <span>${filme.avaliacao_imdb || filme.avaliacao_tmdb || 'N/A'}/10</span>
+                        <span>${filme.avaliacao_imdb || filme.avaliacao || 'N/A'}/10</span>
                     </div>
                     
                     <button class="btn-detalhes" data-index="${index}">
@@ -350,10 +579,8 @@ function criarCardFilme(filme, index, corTema) {
 }
 
 // =========== MOSTRAR DETALHES DO FILME ===========
-function mostrarDetalhesFilme(index) {
-    const filmesTema = estado.filmes[estado.temaAtivo] || [];
-    const filme = filmesTema[index];
-    const temaInfo = estado.temas.find(t => t.id === estado.temaAtivo);
+function mostrarDetalhesFilme(index, filmesLista, temaInfo) {
+    const filme = filmesLista[index];
     const corTema = temaInfo?.cor || '#d32f2f';
     
     const modalHTML = `
@@ -363,56 +590,43 @@ function mostrarDetalhesFilme(index) {
                     <button class="close-modal" onclick="fecharModal()">×</button>
                     <h2>${filme.titulo_pt}</h2>
                     <p style="opacity: 0.9; margin-top: 5px;">
-                        ${filme.bandeira || ''} ${filme.pais} • ${filme.ano} • Dir. ${filme.diretor}
+                        ${filme.bandeira || ''} ${filme.pais} • ${filme.ano}
                     </p>
                 </div>
                 
                 <div class="modal-body">
-                    ${filme.cartaz_url ? `
+                    ${(filme.cartaz_url || filme.cartaz) ? `
                         <div style="text-align: center; margin-bottom: 1.5rem;">
-                             <img src="${filme.cartaz_url}" 
+                            <img src="${filme.cartaz_url || filme.cartaz}" 
                                  alt="${filme.titulo_pt}" 
-                                     style="
-                                    max-width: 100%;
-                                    max-height: 300px;
-                                    border-radius: 8px; 
-                                    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-                                    object-fit: contain;
-                                    background: #f0f0f0;
-                                    padding: 10px;
-                                "
-                                onerror="this.style.display='none'">
-                    </div>
-    ` : ''}
-                    
-                    <div style="margin-bottom: 2rem;">
-                        <h3 style="color: ${corTema}; margin-bottom: 1rem;">📖 Sinopse</h3>
-                        <p style="line-height: 1.6; font-size: 1.05rem;">${filme.sinopse}</p>
-                    </div>
-                    
-                    ${filme.analise_cultural ? `
-                        <div style="margin-bottom: 2rem;">
-                            <h3 style="color: ${corTema}; margin-bottom: 1rem;">🌍 Análise Cultural</h3>
-                            <p style="line-height: 1.6; background: ${corTema}10; padding: 1.2rem; border-radius: 8px;">
-                                ${filme.analise_cultural}
-                            </p>
+                                 style="
+                                     max-width: 250px;
+                                     border-radius: 8px;
+                                     box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+                                 "
+                                 onerror="this.style.display='none'">
                         </div>
                     ` : ''}
                     
-                    <div style="background: #f8f9fa; padding: 1.8rem; border-radius: 10px; margin-bottom: 2rem;">
-                        <h3 style="color: #666; margin-bottom: 1.2rem; border-bottom: 2px solid #eee; padding-bottom: 0.5rem;">📊 Informações</h3>
+                    <div style="margin-bottom: 2rem;">
+                        <h3 style="color: ${corTema}; margin-bottom: 1rem;">📖 Sinopse</h3>
+                        <p style="line-height: 1.6; font-size: 1.05rem;">${filme.sinopse || 'Sinopse não disponível.'}</p>
+                    </div>
+                    
+                    <div style="background: ${corTema}10; padding: 1.8rem; border-radius: 10px; margin-bottom: 2rem;">
+                        <h3 style="color: ${corTema}; margin-bottom: 1.2rem;">📊 Informações</h3>
                         
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
                             <div>
-                                <strong style="color: #555;">Avaliação IMDb:</strong><br>
+                                <strong style="color: var(--text-secondary);">Avaliação:</strong><br>
                                 <span style="color: #f39c12; font-size: 1.4rem; font-weight: bold; display: inline-block; margin-top: 5px;">
-                                    ${filme.avaliacao_imdb ? `⭐ ${filme.avaliacao_imdb}/10` : 'N/A'}
+                                    ⭐ ${filme.avaliacao_imdb || filme.avaliacao || 'N/A'}/10
                                 </span>
                             </div>
                             
-                            ${filme.onde_assistir && filme.onde_assistir.length > 0 ? `
+                            ${filme.onde_assistir ? `
                                 <div>
-                                    <strong style="color: #555;">Onde assistir:</strong><br>
+                                    <strong style="color: var(--text-secondary);">Onde assistir:</strong><br>
                                     <div style="margin-top: 5px;">
                                         ${filme.onde_assistir.map(plataforma => 
                                             `<span style="display: inline-block; background: #e3f2fd; 
@@ -424,39 +638,13 @@ function mostrarDetalhesFilme(index) {
                                 </div>
                             ` : ''}
                         </div>
-                        
-                        ${filme.curiosidade ? `
-                            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid #eee;">
-                                <strong style="color: #555;">🎯 Curiosidade:</strong><br>
-                                <em style="color: #666; display: block; margin-top: 8px; font-style: italic;">
-                                    ${filme.curiosidade}
-                                </em>
-                            </div>
-                        ` : ''}
                     </div>
-                    
-                    ${filme.temas && filme.temas.length > 0 ? `
-                        <div>
-                            <h3 style="color: ${corTema}; margin-bottom: 1rem;">🏷️ Temas Relacionados</h3>
-                            <div>
-                                ${filme.temas.map(tema => 
-                                    `<span style="display: inline-block; background: ${corTema}20; 
-                                              color: ${corTema}; padding: 0.6rem 1.2rem; 
-                                              margin: 0.3rem; border-radius: 20px; 
-                                              font-weight: 500;">${tema}</span>`
-                                ).join('')}
-                            </div>
-                        </div>
-                    ` : ''}
                 </div>
             </div>
         </div>
     `;
     
-    // Adicionar modal ao body
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
-    // Mostrar modal
     document.getElementById('modalDetalhes').style.display = 'block';
 }
 
@@ -468,42 +656,83 @@ window.fecharModal = function() {
     }
 };
 
-// Fechar modal ao clicar fora
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('modalDetalhes');
-    if (modal && event.target === modal) {
-        fecharModal();
-    }
-});
-
 // =========== MOSTRAR ERRO ===========
 function mostrarErro(mensagem) {
     estado.elementos.loading.style.display = 'none';
+    estado.elementos.app.style.display = 'none';
     estado.elementos.error.style.display = 'block';
-    estado.elementos.error.innerHTML = `
-        <h3>⚠️ Ocorreu um erro</h3>
-        <p>${mensagem}</p>
-        <button onclick="location.reload()" style="
-            background: #d32f2f; 
-            color: white; 
-            border: none; 
-            padding: 10px 20px; 
-            border-radius: 5px; 
-            margin-top: 10px; 
-            cursor: pointer;
-            font-weight: bold;
-        ">
-            🔄 Tentar novamente
-        </button>
-    `;
+    estado.elementos.error.innerHTML = mensagem;
 }
 
-// =========== EXPORTAR FUNÇÕES GLOBAIS ===========
+// =========== ADICIONAR ESTILOS DINÂMICOS ===========
+function adicionarEstilosPaises() {
+    const estilo = document.createElement('style');
+    estilo.textContent = `
+        .btn-pais.ativo {
+            border-color: var(--azul) !important;
+            background: var(--azul-10) !important;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(25, 118, 210, 0.2);
+        }
+        
+        .btn-pais:hover:not(.ativo) {
+            border-color: var(--azul) !important;
+        }
+        
+        .paises-grid::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .paises-grid::-webkit-scrollbar-track {
+            background: var(--card-bg);
+            border-radius: 3px;
+        }
+        
+        .paises-grid::-webkit-scrollbar-thumb {
+            background: var(--text-secondary);
+            border-radius: 3px;
+        }
+        
+        .btn-modo {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid;
+            font-weight: 500;
+        }
+        
+        .btn-modo:hover:not(.ativo) {
+            opacity: 0.8;
+        }
+        
+        :root {
+            --azul-10: rgba(25, 118, 210, 0.1);
+            --border-color: #e0e0e0;
+            --card-bg: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #666;
+            --text-muted: #888;
+        }
+        
+        [data-theme="dark"] {
+            --border-color: #444;
+            --card-bg: #2c3e50;
+            --text-primary: #ffffff;
+            --text-secondary: #b0b0b0;
+            --text-muted: #888;
+        }
+    `;
+    document.head.appendChild(estilo);
+}
+
+// =========== INICIALIZAÇÃO FINAL ===========
+adicionarEstilosPaises();
+
+// Exportar funções globais
 window.mostrarDetalhesFilme = mostrarDetalhesFilme;
 window.mudarTema = mudarTema;
+window.carregarFilmesTemaAtivo = carregarFilmesTemaAtivo;
+window.fecharModal = fecharModal;
 
-console.log('✅ Script carregado com sucesso! Pronto para iniciar...');
-
-console.log('%c✨ ALABASTER DEVELOPER ✨', 'font-size: 20px; color: #d32f2f; font-weight: bold;');
-console.log('%cApp desenvolvido com 💜 por Brenda Tavares', 'color: #666;');
-console.log('%cgithub.com/Brenda-Tavares', 'color: #2E8B57; font-weight: bold;');
+console.log('✅ Sistema global carregado!');
+console.log('%c✨ CineWorld - Recomendações de Filmes PRONTA! ✨', 'font-size: 18px; color: #1976d2; font-weight: bold;');
+console.log('%cAgora com TODOS os países do mundo! 🌍', 'color: #666;');
