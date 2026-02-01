@@ -2,21 +2,17 @@
   "temas": [
     {
       "id": "cinema-brasileiro",
-      "nome": "🇧🇷 Cinema Brasileiro",
-      "descricao": "Clássicos e obras-primas da cinematografia nacional",
+      "nome": "Cinema Brasileiro",
+      "descricao": "A riqueza do cinema nacional, das chanchadas aos dramas contemporâneos.",
       "cor": "#2E8B57",
-      "icone": "🎭",
-      "total_filmes": 3
+      "icone": "🇧🇷"
     },
     {
       "id": "amores-proibidos",
-      "nome": "Amores Impossíveis",
-      "descricao": "Relacionamentos que desafiam normas sociais em diferentes culturas",
+      "nome": "Filmes Internacionais",
+      "descricao": "Produções cinematográficas de todo o mundo com histórias cativantes.",
       "cor": "#d32f2f",
-      "icone": "💔",
-      "total_filmes": 2
+      "icone": "🌎"
     }
   ]
-
 }
-
