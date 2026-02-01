@@ -1,7 +1,7 @@
 /**
- * 🎬 CineWorld • Desenvolvido por Alabaster Developer
- * 📅 2026 • Integração com API TMDB
- * 🐙 github.com/Brenda-Tavares
+ * CineWorld • Desenvolvido por Alabaster Developer
+ * 2026 • Integração com API TMDB
+ * github.com/Brenda-Tavares
  */
 
 const express = require('express');
@@ -312,3 +312,4 @@ app.listen(PORT, () => {
     console.log(`Ver filmes BR: http://localhost:${PORT}/api/pais/BR/filmes`);
     console.log('='.repeat(60) + '\n');
 });
+
