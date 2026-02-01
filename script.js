@@ -1,738 +1,663 @@
 /**
- * 🎬 CineWorld - Recomendações de Filmes • Desenvolvido por Alabaster Developer
- * 🌍 Agora com TODOS os países do mundo!
- */
-
-console.log('%c🌍 CineWorld - Recomendações de Filmes', 'color: #d32f2f; font-weight: bold; font-size: 16px;');
-
-// =========== CONFIGURAÇÃO ===========
+ *  CineWorld - Recomendações de Filmes • Desenvolvido por Alabaster Developer */
+// CONFIGURAÇÃO
 const API_BASE = 'http://localhost:3001/api';
+const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
 
-// =========== ESTADO DA APLICAÇÃO ===========
-let estado = {
-    temaAtivo: 'cinema-brasileiro',
-    filmes: {},
-    temas: [],
-    paises: [], // NOVO: Lista de países
-    modo: 'temas', // 'temas' ou 'paises'
-    elementos: {}
+// ESTADO
+let state = {
+    currentGenre: '0',
+    currentPage: 1,
+    totalPages: 1,
+    movies: [],
+    genres: [],
+    searchQuery: '',
+    isLoading: false
 };
 
-// =========== QUANDO A PÁGINA CARREGAR ===========
+// INICIALIZAÇÃO
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🌐 DOM carregado - INICIANDO APP GLOBAL');
+    console.log('CineWorld iniciando...');
     
-    inicializarElementos();
-    iniciarTema();
-    carregarDadosIniciais();
+    // Setup dos eventos
+    setupEventListeners();
+    
+    // Carrega dados
+    loadData();
+    
+    // Fallback: esconde loading após 3 segundos
+    setTimeout(() => {
+        const loading = document.getElementById('loading');
+        const app = document.getElementById('app');
+        if (loading && app && loading.style.display !== 'none') {
+            loading.style.display = 'none';
+            app.style.display = 'block';
+        }
+    }, 3000);
 });
 
-// =========== INICIALIZAR ELEMENTOS DOM ===========
-function inicializarElementos() {
-    estado.elementos = {
-        loading: document.getElementById('loading'),
-        app: document.getElementById('app'),
-        error: document.getElementById('error'),
-        navTemas: document.getElementById('navTemas'),
-        temasBotoes: document.getElementById('temasBotoes'),
-        filmesGrid: null,
-        secaoTema: null
-    };
-}
-
-// =========== TEMA ESCURO/CLARO ===========
-function iniciarTema() {
-    const temaSalvo = localStorage.getItem('tema') || 'auto';
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+// CONFIGURAÇÃO EVENT LISTENERS
+function setupEventListeners() {
+    // Busca
+    const searchBtn = document.getElementById('searchBtn');
+    const searchInput = document.getElementById('searchInput');
     
-    if (temaSalvo === 'dark' || (temaSalvo === 'auto' && prefersDark)) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-        document.documentElement.setAttribute('data-theme', 'light');
+    if (searchBtn) {
+        searchBtn.addEventListener('click', performSearch);
     }
-}
-
-// =========== CARREGAR DADOS INICIAIS ===========
-async function carregarDadosIniciais() {
-    console.log('🌐 Iniciando carregamento...');
     
-    try {
-        // 1. Carrega os temas FIXOS (Brasil + Internacionais)
-        console.log('1. Carregando temas fixos...');
-        const respostaTemas = await fetch('data/temas.json');
-        const temasData = await respostaTemas.json();
-        estado.temas = temasData.temas || [];
-        
-        // 2. Carrega filmes brasileiros da API
-        console.log('2. Carregando filmes brasileiros...');
-        const respostaBR = await fetch(`${API_BASE}/filmes/brasileiros`);
-        const dadosBR = await respostaBR.json();
-        
-        if (dadosBR.sucesso) {
-            estado.filmes['cinema-brasileiro'] = dadosBR.filmes || [];
-        }
-        
-        // 3. Carrega filmes internacionais da API
-        console.log('3. Carregando filmes internacionais...');
-        const respostaINT = await fetch(`${API_BASE}/filmes/internacionais`);
-        const dadosINT = await respostaINT.json();
-        
-        if (dadosINT.sucesso) {
-            estado.filmes['amores-proibidos'] = dadosINT.filmes || [];
-        }
-        
-        // 4. Carrega lista de países da API
-        console.log('4. Carregando lista de países...');
-        await carregarListaPaises();
-        
-        // 5. Mostra navegação completa
-        estado.elementos.navTemas.style.display = 'block';
-        renderizarNavegacaoCompleta();
-        
-        // 6. Carrega o tema ativo
-        carregarFilmesTemaAtivo();
-        
-        // 7. Esconde loading, mostra app
-        estado.elementos.loading.style.display = 'none';
-        estado.elementos.app.style.display = 'block';
-        
-        console.log('✅ Sistema global carregado!');
-        console.log(`   🎭 Temas: ${estado.temas.length}`);
-        console.log(`   🌍 Países: ${estado.paises.length}`);
-        
-    } catch (erro) {
-        console.error('❌ Erro inicial:', erro);
-        mostrarErro(`
-            <h3>⚠️ Problema de conexão</h3>
-            <p>Não foi possível conectar ao servidor.</p>
-            <p><strong>Dica:</strong> Certifique-se que o backend está rodando na porta 3001</p>
-            <button onclick="location.reload()" class="btn-detalhes">
-                🔄 Tentar novamente
-            </button>
-        `);
-    }
-}
-
-// =========== CARREGAR LISTA DE PAÍSES ===========
-async function carregarListaPaises() {
-    try {
-        const resposta = await fetch(`${API_BASE}/paises`);
-        const dados = await resposta.json();
-        
-        if (dados.sucesso) {
-            estado.paises = dados.paises || [];
-            console.log(`✅ ${estado.paises.length} países carregados`);
-        } else {
-            console.warn('⚠️ Não foi possível carregar países');
-            estado.paises = [];
-        }
-    } catch (erro) {
-        console.warn('⚠️ Erro ao carregar países:', erro);
-        estado.paises = [];
-    }
-}
-
-// =========== RENDERIZAR NAVEGAÇÃO COMPLETA ===========
-function renderizarNavegacaoCompleta() {
-    console.log('🎨 Renderizando navegação completa...');
-    
-    const container = estado.elementos.temasBotoes;
-    container.innerHTML = '';
-    
-    // 1. CABEÇALHO DA SEÇÃO
-    const cabecalho = document.createElement('div');
-    cabecalho.className = 'navegacao-cabecalho';
-    cabecalho.innerHTML = `
-        <h3 style="margin-bottom: 10px;">🎭 Explorar por:</h3>
-        <div class="modo-botoes" style="display: flex; gap: 10px; margin-bottom: 20px;">
-            <button class="btn-modo ${estado.modo === 'temas' ? 'ativo' : ''}" 
-                    data-modo="temas" 
-                    style="padding: 8px 16px; border-radius: 20px; border: 2px solid var(--vermelho); background: ${estado.modo === 'temas' ? 'var(--vermelho)' : 'transparent'}; color: ${estado.modo === 'temas' ? 'white' : 'var(--text-primary)'};">
-                🎬 Temas
-            </button>
-            <button class="btn-modo ${estado.modo === 'paises' ? 'ativo' : ''}" 
-                    data-modo="paises"
-                    style="padding: 8px 16px; border-radius: 20px; border: 2px solid var(--azul); background: ${estado.modo === 'paises' ? 'var(--azul)' : 'transparent'}; color: ${estado.modo === 'paises' ? 'white' : 'var(--text-primary)'};">
-                🌍 Países (${estado.paises.length})
-            </button>
-        </div>
-    `;
-    container.appendChild(cabecalho);
-    
-    // 2. CONTAINER DINÂMICO
-    const conteudoContainer = document.createElement('div');
-    conteudoContainer.id = 'navegacaoConteudo';
-    container.appendChild(conteudoContainer);
-    
-    // 3. ADICIONAR EVENTOS AOS BOTÕES DE MODO
-    document.querySelectorAll('.btn-modo').forEach(botao => {
-        botao.addEventListener('click', function() {
-            const novoModo = this.dataset.modo;
-            console.log(`🔄 Mudando modo: ${estado.modo} → ${novoModo}`);
-            estado.modo = novoModo;
-            
-            document.querySelectorAll('.btn-modo').forEach(b => {
-                b.classList.toggle('ativo', b.dataset.modo === novoModo);
-            });
-            
-            if (novoModo === 'temas') {
-                renderizarBotoesTemas();
-            } else {
-                renderizarBotoesPaises();
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
             }
         });
-    });
-    
-    // 4. RENDERIZAR CONTEÚDO INICIAL
-    if (estado.modo === 'temas') {
-        renderizarBotoesTemas();
-    } else {
-        renderizarBotoesPaises();
-    }
-}
-
-// =========== RENDERIZAR BOTÕES DE TEMAS ===========
-function renderizarBotoesTemas() {
-    const container = document.getElementById('navegacaoConteudo');
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (estado.temas.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-secondary);">Nenhum tema encontrado</p>';
-        return;
     }
     
-    const grid = document.createElement('div');
-    grid.className = 'temas-grid';
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(200px, 1fr))';
-    grid.style.gap = '15px';
+    // Paginação
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
     
-    estado.temas.forEach(tema => {
-        const qtdFilmes = estado.filmes[tema.id]?.length || 0;
+    if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+            if (state.currentPage > 1) {
+                state.currentPage--;
+                loadMovies();
+            }
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            if (state.currentPage < state.totalPages) {
+                state.currentPage++;
+                loadMovies();
+            }
+        });
+    }
+    
+    // Modal
+    const modal = document.getElementById('movieModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this || e.target.classList.contains('close-modal')) {
+                closeModal();
+            }
+        });
         
-        if (qtdFilmes > 0) {
-            const botao = document.createElement('button');
-            botao.className = `btn-tema ${tema.id === estado.temaAtivo ? 'ativo' : ''}`;
-            botao.dataset.tema = tema.id;
-            botao.dataset.tipo = 'tema';
-            
-            botao.innerHTML = `
-                <span class="tema-icone">${tema.icone || '🎬'}</span>
-                <div class="tema-info">
-                    <div class="tema-nome">${tema.nome}</div>
-                    <div class="tema-contador">${qtdFilmes} filme${qtdFilmes !== 1 ? 's' : ''}</div>
-                </div>
-            `;
-            
-            botao.addEventListener('click', () => {
-                console.log(`🖱️ Clicou no tema: ${tema.id}`);
-                mudarTema(tema.id);
-            });
-            
-            grid.appendChild(botao);
-        }
-    });
-    
-    container.appendChild(grid);
+        // Fechar com ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modal.classList.contains('show')) {
+                closeModal();
+            }
+        });
+    }
 }
 
-// =========== RENDERIZAR BOTÕES DE PAÍSES ===========
-function renderizarBotoesPaises() {
-    const container = document.getElementById('navegacaoConteudo');
+// EXECUTAR BUSCA
+function performSearch() {
+    const searchInput = document.getElementById('searchInput');
+    if (!searchInput) return;
+    
+    const query = searchInput.value.trim();
+    state.searchQuery = query;
+    state.currentPage = 1;
+    state.currentGenre = '0'; // Reset genre when searching
+    
+    // Update UI
+    const titleEl = document.getElementById('currentTitle');
+    if (titleEl) {
+        titleEl.textContent = query ? `Busca: "${query}"` : 'Filmes Populares';
+    }
+    
+    loadMovies();
+}
+
+// CARREGAR DADOS
+async function loadData() {
+    try {
+        console.log('Conectando ao backend...');
+        
+        // 1. Carrega gêneros
+        const genresRes = await fetch(API_BASE + '/genres');
+        const genresData = await genresRes.json();
+        
+        if (genresData.success) {
+            state.genres = genresData.genres;
+            console.log(state.genres.length + ' gêneros carregados');
+            renderGenres();
+        }
+        
+        // 2. Carrega filmes
+        await loadMovies();
+        
+        // 3. Mostra app
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        console.log('App pronto!');
+        
+        // 4. Atualiza status
+        updateBackendStatus(true);
+        
+    } catch (error) {
+        console.error('Erro ao carregar:', error);
+        showError();
+        updateBackendStatus(false);
+    }
+}
+
+// CARREGAR FILMES
+async function loadMovies() {
+    if (state.isLoading) return;
+    state.isLoading = true;
+    
+    console.log('Carregando filmes... Gênero: ' + state.currentGenre + ', Página: ' + state.currentPage);
+    
+    // Mostra loading
+    showLoading(true);
+    
+    try {
+        let url = API_BASE + '/movies?page=' + state.currentPage;
+        
+        if (state.searchQuery) {
+            url += '&query=' + encodeURIComponent(state.searchQuery);
+        } else if (state.currentGenre !== '0') {
+            url += '&genre=' + state.currentGenre;
+        }
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.success) {
+            state.movies = data.movies || [];
+            state.totalPages = data.totalPages || 1;
+            
+            console.log(state.movies.length + ' filmes carregados');
+            
+            renderMovies();
+            updateUI();
+            updatePagination();
+        }
+        
+    } catch (error) {
+        console.error('Erro ao carregar filmes:', error);
+        state.movies = getMockMovies();
+        renderMovies();
+    }
+    
+    state.isLoading = false;
+    showLoading(false);
+}
+
+// RENDERIZAR GÊNEROS
+function renderGenres() {
+    const container = document.getElementById('genresList');
     if (!container) return;
     
     container.innerHTML = '';
     
-    if (estado.paises.length === 0) {
+    state.genres.forEach(genre => {
+        const div = document.createElement('div');
+        div.className = 'genre-item';
+        if (genre.id.toString() === state.currentGenre) {
+            div.classList.add('active');
+        }
+        
+        // Extrair ícone do nome (se houver)
+        const genreName = genre.name;
+        let icon = '🎬';
+        let name = genreName;
+        
+        // Tenta extrair emoji do início do nome
+        const emojiMatch = genreName.match(/^(\p{Emoji})/u);
+        if (emojiMatch) {
+            icon = emojiMatch[0];
+            name = genreName.substring(emojiMatch[0].length).trim();
+        }
+        
+        div.innerHTML = `
+            <span class="genre-icon">${icon}</span>
+            <span class="genre-name">${name}</span>
+        `;
+        
+        div.addEventListener('click', () => {
+            selectGenre(genre);
+        });
+        
+        container.appendChild(div);
+    });
+}
+
+// SELECIONAR GÊNERO
+function selectGenre(genre) {
+    console.log('Selecionando gênero:', genre.name);
+    
+    state.currentGenre = genre.id.toString();
+    state.currentPage = 1;
+    state.searchQuery = '';
+    
+    // Limpa busca
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = '';
+    
+    // Atualiza título
+    const titleEl = document.getElementById('currentTitle');
+    const descEl = document.getElementById('currentDescription');
+    
+    if (titleEl) titleEl.textContent = genre.name;
+    if (descEl) descEl.textContent = genre.description || 'Descubra os melhores filmes deste gênero.';
+    
+    // Atualiza gêneros ativos
+    document.querySelectorAll('.genre-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+    
+    // Carrega filmes
+    loadMovies();
+}
+
+// RENDERIZAR FILMES
+function renderMovies() {
+    const container = document.getElementById('moviesGrid');
+    if (!container) return;
+    
+    if (state.movies.length === 0) {
         container.innerHTML = `
-            <p style="color: var(--text-secondary); text-align: center; padding: 20px;">
-                🌍 Carregando países...
-                <br><small>Conectando à CineWorld - Recomendações de Filmes</small>
-            </p>
-        `;
-        
-        setTimeout(() => carregarListaPaises().then(() => {
-            if (estado.paises.length > 0) {
-                renderizarBotoesPaises();
-            }
-        }), 1000);
-        return;
-    }
-    
-    // CABEÇALHO DE PAÍSES
-    const cabecalhoPaises = document.createElement('div');
-    cabecalhoPaises.innerHTML = `
-        <p style="color: var(--text-secondary); margin-bottom: 15px; font-size: 0.9rem;">
-            <strong>${estado.paises.length} países</strong> disponíveis • Clique para explorar
-        </p>
-    `;
-    container.appendChild(cabecalhoPaises);
-    
-    // GRADE DE PAÍSES
-    const grid = document.createElement('div');
-    grid.className = 'paises-grid';
-    grid.style.display = 'grid';
-    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(120px, 1fr))';
-    grid.style.gap = '12px';
-    grid.style.maxHeight = '300px';
-    grid.style.overflowY = 'auto';
-    grid.style.padding = '10px';
-    grid.style.borderRadius = '8px';
-    grid.style.background = 'var(--card-bg)';
-    
-    estado.paises.forEach((pais) => {
-        const botao = document.createElement('button');
-        botao.className = `btn-pais ${estado.temaAtivo === `pais-${pais.codigo}` ? 'ativo' : ''}`;
-        botao.dataset.pais = pais.codigo;
-        botao.dataset.tipo = 'pais';
-        botao.title = `Explorar filmes de ${pais.nome}`;
-        
-        botao.innerHTML = `
-            <div style="font-size: 1.8rem; margin-bottom: 5px;">${pais.bandeira}</div>
-            <div style="font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${pais.nome}
+            <div class="no-results">
+                <div class="no-results-icon">🎬</div>
+                <h3>Nenhum filme encontrado</h3>
+                <p>Tente outro gênero ou termo de busca.</p>
             </div>
         `;
-        
-        botao.style.cssText = `
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 15px 5px;
-            border: 2px solid var(--border-color);
-            border-radius: 10px;
-            background: var(--card-bg);
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-height: 90px;
-        `;
-        
-        botao.addEventListener('mouseenter', () => {
-            botao.style.transform = 'translateY(-3px)';
-            botao.style.boxShadow = '0 5px 15px rgba(0,0,0,0.1)';
-            botao.style.borderColor = 'var(--azul)';
-        });
-        
-        botao.addEventListener('mouseleave', () => {
-            if (!botao.classList.contains('ativo')) {
-                botao.style.transform = 'translateY(0)';
-                botao.style.boxShadow = 'none';
-                botao.style.borderColor = 'var(--border-color)';
-            }
-        });
-        
-        botao.addEventListener('click', () => {
-            console.log(`🌍 Clicou no país: ${pais.codigo} - ${pais.nome}`);
-            carregarFilmesPorPais(pais.codigo, pais.nome, pais.bandeira);
-        });
-        
-        grid.appendChild(botao);
-    });
-    
-    container.appendChild(grid);
-    
-    // FOOTER INFORMATIVO
-    const footer = document.createElement('div');
-    footer.innerHTML = `
-        <p style="color: var(--text-muted); font-size: 0.8rem; margin-top: 15px; text-align: center;">
-            ⚡ Dica: Use os botões acima para alternar entre <strong>Temas</strong> e <strong>Países</strong>
-        </p>
-    `;
-    container.appendChild(footer);
-}
-
-// =========== CARREGAR FILMES POR PAÍS ===========
-async function carregarFilmesPorPais(codigoPais, nomePais, bandeiraPais) {
-    console.log(`🎬 Carregando filmes do país: ${codigoPais} (${nomePais})`);
-    
-    estado.elementos.app.innerHTML = `
-        <div style="text-align: center; padding: 50px;">
-            <div style="font-size: 3rem; margin-bottom: 20px;">${bandeiraPais}</div>
-            <h2>Carregando filmes de ${nomePais}...</h2>
-            <p style="color: var(--text-secondary);">Buscando na CineWorld - Recomendações de Filmes</p>
-        </div>
-    `;
-    
-    try {
-        const resposta = await fetch(`${API_BASE}/filmes/pais/${codigoPais}`);
-        const dados = await resposta.json();
-        
-        if (dados.sucesso) {
-            estado.temaAtivo = `pais-${codigoPais}`;
-            
-            const temaVirtual = {
-                id: `pais-${codigoPais}`,
-                nome: `${bandeiraPais} Cinema ${nomePais}`,
-                descricao: `Filmes populares de ${nomePais}. ${dados.total_filmes} filmes disponíveis.`,
-                cor: '#1976d2',
-                icone: bandeiraPais
-            };
-            
-            renderizarApp(dados.filmes, temaVirtual);
-            atualizarBotoesAtivos(`pais-${codigoPais}`);
-            
-            console.log(`✅ ${dados.filmes.length} filmes carregados de ${nomePais}`);
-        } else {
-            throw new Error(dados.erro || 'Erro ao carregar filmes do país');
-        }
-        
-    } catch (erro) {
-        console.error(`❌ Erro ao carregar filmes do país ${codigoPais}:`, erro);
-        mostrarErro(`
-            <h3>⚠️ Não foi possível carregar filmes de ${nomePais}</h3>
-            <p>${erro.message}</p>
-            <button onclick="carregarFilmesTemaAtivo()" class="btn-detalhes">
-                ↩️ Voltar para temas
-            </button>
-        `);
-    }
-}
-
-// =========== ATUALIZAR BOTÕES ATIVOS ===========
-function atualizarBotoesAtivos(temaId) {
-    document.querySelectorAll('[data-tema]').forEach(botao => {
-        botao.classList.toggle('ativo', botao.dataset.tema === temaId);
-    });
-    
-    document.querySelectorAll('[data-pais]').forEach(botao => {
-        const paisId = `pais-${botao.dataset.pais}`;
-        botao.classList.toggle('ativo', paisId === temaId);
-        botao.style.borderColor = paisId === temaId ? 'var(--azul)' : 'var(--border-color)';
-        botao.style.background = paisId === temaId ? 'var(--azul-10)' : 'var(--card-bg)';
-    });
-}
-
-// =========== MUDAR TEMA ===========
-function mudarTema(novoTema) {
-    console.log(`🔄 Mudando tema: ${estado.temaAtivo} → ${novoTema}`);
-    
-    if (novoTema.startsWith('pais-')) {
         return;
     }
     
-    if (!estado.filmes[novoTema]) {
-        console.error(`❌ Tema ${novoTema} não encontrado!`);
-        return;
-    }
+    container.innerHTML = '';
     
-    estado.temaAtivo = novoTema;
-    atualizarBotoesAtivos(novoTema);
-    carregarFilmesTemaAtivo();
-}
-
-// =========== CARREGAR FILMES DO TEMA ATIVO ===========
-function carregarFilmesTemaAtivo() {
-    if (estado.temaAtivo.startsWith('pais-')) {
-        return;
-    }
-    
-    const filmesTema = estado.filmes[estado.temaAtivo] || [];
-    const temaInfo = estado.temas.find(t => t.id === estado.temaAtivo);
-    
-    console.log(`🎬 Carregando ${filmesTema.length} filmes do tema: ${temaInfo?.nome || estado.temaAtivo}`);
-    
-    if (filmesTema.length === 0) {
-        console.error(`❌ Nenhum filme no tema ${estado.temaAtivo}!`);
-        mostrarErro(`Nenhum filme encontrado para "${temaInfo?.nome || estado.temaAtivo}"`);
-        return;
-    }
-    
-    renderizarApp(filmesTema, temaInfo);
-}
-
-// =========== RENDERIZAR APLICAÇÃO ===========
-function renderizarApp(filmesLista, temaInfo) {
-    console.log(`🎨 Renderizando ${filmesLista.length} filmes...`);
-    
-    const corTema = temaInfo?.cor || '#d32f2f';
-    
-    let html = `
-        <div class="secao-tema" id="secaoTema" style="border-left: 5px solid ${corTema};">
-            <h2>${temaInfo ? temaInfo.nome : '🎬 Filmes Recomendados'}</h2>
-            ${temaInfo ? `<p class="descricao-tema">${temaInfo.descricao}</p>` : ''}
-        </div>
+    state.movies.forEach(movie => {
+        const year = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+        const rating = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
+        const overview = movie.overview || 'Sinopse não disponível.';
+        const shortOverview = overview.length > 100 ? overview.substring(0, 100) + '...' : overview;
+        const posterUrl = movie.poster_path ? TMDB_IMAGE_BASE + movie.poster_path : null;
         
-        <div class="filmes-grid" id="filmesGrid">
-    `;
-    
-    filmesLista.forEach((filme, index) => {
-        html += criarCardFilme(filme, index, corTema);
-    });
-    
-    html += `
-        </div>
-        
-        <div class="footer-app" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">
-            <p>🎭 ${filmesLista.length} filme${filmesLista.length !== 1 ? 's' : ''} encontrado${filmesLista.length !== 1 ? 's' : ''} em "${temaInfo?.nome || 'este tema'}"</p>
-        </div>
-    `;
-    
-    estado.elementos.app.innerHTML = html;
-    
-    estado.elementos.filmesGrid = document.getElementById('filmesGrid');
-    estado.elementos.secaoTema = document.getElementById('secaoTema');
-    
-    document.querySelectorAll('.btn-detalhes').forEach((botao, index) => {
-        botao.addEventListener('click', () => mostrarDetalhesFilme(index, filmesLista, temaInfo));
-    });
-    
-    console.log(`✅ ${filmesLista.length} filmes renderizados`);
-}
-
-// =========== CRIAR CARD DE FILME ===========
-function criarCardFilme(filme, index, corTema) {
-    const temImagem = filme.cartaz_url || filme.cartaz;
-    
-    return `
-        <div class="filme-card" data-index="${index}">
-            <div class="filme-imagem" style="
-                position: relative;
-                height: 200px;
-                overflow: hidden;
-                ${!temImagem ? `background: linear-gradient(135deg, ${corTema}40, ${corTema}70);` : ''}
-            ">
-                ${temImagem ? `
-                    <img src="${filme.cartaz_url || filme.cartaz}" 
-                         alt="${filme.titulo_pt}"
-                         style="
-                             width: 100%;
-                             height: 100%;
-                             object-fit: cover;
-                             position: absolute;
-                             top: 0;
-                             left: 0;
-                         "
-                         onerror="
-                             this.style.display='none';
-                             this.parentElement.style.background = 'linear-gradient(135deg, ${corTema}40, ${corTema}70)';
-                         ">
-                    
-                    <div style="
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7) 90%);
-                        z-index: 1;
-                    "></div>
-                ` : ''}
-                
-                <div style="
-                    position: absolute;
-                    bottom: 15px;
-                    left: 0;
-                    right: 0;
-                    text-align: center;
-                    color: white;
-                    z-index: 2;
-                    padding: 0 15px;
-                ">
-                    <div style="
-                        font-size: 2rem;
-                        margin-bottom: 5px;
-                        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-                    ">
-                        ${filme.bandeira || '🎬'}
-                    </div>
-                    <div style="
-                        font-size: 1rem;
-                        font-weight: bold;
-                        background: rgba(0,0,0,0.6);
-                        display: inline-block;
-                        padding: 5px 15px;
-                        border-radius: 15px;
-                        backdrop-filter: blur(4px);
-                        border: 1px solid rgba(255,255,255,0.2);
-                    ">
-                        ${filme.pais}
-                    </div>
+        const card = document.createElement('div');
+        card.className = 'movie-card';
+        card.innerHTML = `
+            <div class="movie-poster">
+                ${posterUrl ? 
+                    '<img src="' + posterUrl + '" alt="' + movie.title + '" loading="lazy">' :
+                    '<div class="poster-placeholder"><i class="fas fa-film"></i></div>'
+                }
+                ${rating !== 'N/A' ? 
+                    '<div class="movie-rating"><i class="fas fa-star"></i> ' + rating + '</div>' : 
+                    ''
+                }
+            </div>
+            <div class="movie-info">
+                <h3 class="movie-title">${movie.title || 'Sem título'}</h3>
+                <div class="movie-meta">
+                    ${year !== 'N/A' ? '<span class="movie-year">' + year + '</span>' : ''}
+                    ${movie.production_country ? '<span class="movie-country">' + movie.production_country + '</span>' : ''}
+                    ${movie.language_name ? '<span class="movie-language">' + movie.language_name + '</span>' : ''}
+                </div>
+                <p class="movie-overview">${shortOverview}</p>
+                <div class="movie-actions">
+                    <button class="details-btn" onclick="showMovieDetails(${movie.id})">
+                        <i class="fas fa-info-circle"></i> Detalhes
+                    </button>
                 </div>
             </div>
-            
-            <div class="filme-info">
-                <h3 class="filme-titulo">${filme.titulo_pt}</h3>
-                <p class="filme-detalhes">
-                    ${filme.diretor || 'Diretor não disponível'} • ${filme.ano}
-                </p>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+// MOSTRAR DETALHES DO FILME
+window.showMovieDetails = async function(movieId) {
+    try {
+        const response = await fetch(API_BASE + '/movie/' + movieId);
+        const data = await response.json();
+        
+        if (data.success) {
+            showModal(data.movie);
+        } else {
+            alert('Erro ao carregar detalhes do filme.');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        // Tenta encontrar nos filmes carregados
+        const movie = state.movies.find(m => m.id === movieId);
+        if (movie) {
+            showModal(movie);
+        } else {
+            alert('Não foi possível carregar os detalhes.');
+        }
+    }
+};
+
+// MOSTRAR MODAL
+function showModal(movie) {
+    const modal = document.getElementById('movieModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalBody = document.getElementById('modalBody');
+    
+    if (!modal || !modalTitle || !modalBody) return;
+    
+    const year = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
+    const rating = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
+    const posterUrl = movie.poster_path ? TMDB_IMAGE_BASE + movie.poster_path : null;
+    
+    modalTitle.textContent = movie.title;
+    
+    modalBody.innerHTML = `
+        <div class="modal-movie-content">
+            <div class="modal-poster">
+                ${posterUrl ? 
+                    '<img src="' + posterUrl + '" alt="' + movie.title + '">' :
+                    '<div class="modal-poster-placeholder"><i class="fas fa-film"></i></div>'
+                }
+            </div>
+            <div class="modal-info">
+                <div class="modal-meta">
+                    ${rating !== 'N/A' ? '<span class="modal-rating"><i class="fas fa-star"></i> ' + rating + '/10</span>' : ''}
+                    ${year !== 'N/A' ? '<span class="modal-year">' + year + '</span>' : ''}
+                    ${movie.production_country ? '<span class="modal-country">' + movie.production_country + '</span>' : ''}
+                    ${movie.language_name ? '<span class="modal-language">' + movie.language_name + '</span>' : ''}
+                </div>
                 
-                <p class="filme-sinopse">
-                    ${filme.sinopse?.substring(0, 120) || 'Sinopse não disponível.'}...
-                </p>
+                <h3>Sinopse</h3>
+                <p class="modal-overview">${movie.overview || 'Sinopse não disponível.'}</p>
                 
-                <div class="filme-rodape">
-                    <div class="avaliacao">
-                        <span>⭐</span>
-                        <span>${filme.avaliacao_imdb || filme.avaliacao || 'N/A'}/10</span>
-                    </div>
-                    
-                    <button class="btn-detalhes" data-index="${index}">
-                        Ver detalhes
+                ${movie.original_title && movie.original_title !== movie.title ? 
+                    '<p><strong>Título original:</strong> ' + movie.original_title + '</p>' : 
+                    ''
+                }
+                
+                <div class="modal-actions">
+                    <button class="modal-close-btn" onclick="closeModal()">
+                        <i class="fas fa-times"></i> Fechar
                     </button>
                 </div>
             </div>
         </div>
     `;
+    
+    modal.classList.add('show');
 }
 
-// =========== MOSTRAR DETALHES DO FILME ===========
-function mostrarDetalhesFilme(index, filmesLista, temaInfo) {
-    const filme = filmesLista[index];
-    const corTema = temaInfo?.cor || '#d32f2f';
+// FECHAR MODAL
+function closeModal() {
+    const modal = document.getElementById('movieModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+// ATUALIZAR UI
+function updateUI() {
+    // Atualiza contador
+    const countEl = document.getElementById('moviesCount');
+    if (countEl) {
+        countEl.textContent = state.movies.length + ' filmes';
+    }
     
-    const modalHTML = `
-        <div class="modal" id="modalDetalhes">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, ${corTema} 0%, var(--preto) 100%);">
-                    <button class="close-modal" onclick="fecharModal()">×</button>
-                    <h2>${filme.titulo_pt}</h2>
-                    <p style="opacity: 0.9; margin-top: 5px;">
-                        ${filme.bandeira || ''} ${filme.pais} • ${filme.ano}
-                    </p>
-                </div>
-                
-                <div class="modal-body">
-                    ${(filme.cartaz_url || filme.cartaz) ? `
-                        <div style="text-align: center; margin-bottom: 1.5rem;">
-                            <img src="${filme.cartaz_url || filme.cartaz}" 
-                                 alt="${filme.titulo_pt}" 
-                                 style="
-                                     max-width: 250px;
-                                     border-radius: 8px;
-                                     box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-                                 "
-                                 onerror="this.style.display='none'">
-                        </div>
-                    ` : ''}
-                    
-                    <div style="margin-bottom: 2rem;">
-                        <h3 style="color: ${corTema}; margin-bottom: 1rem;">📖 Sinopse</h3>
-                        <p style="line-height: 1.6; font-size: 1.05rem;">${filme.sinopse || 'Sinopse não disponível.'}</p>
-                    </div>
-                    
-                    <div style="background: ${corTema}10; padding: 1.8rem; border-radius: 10px; margin-bottom: 2rem;">
-                        <h3 style="color: ${corTema}; margin-bottom: 1.2rem;">📊 Informações</h3>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                            <div>
-                                <strong style="color: var(--text-secondary);">Avaliação:</strong><br>
-                                <span style="color: #f39c12; font-size: 1.4rem; font-weight: bold; display: inline-block; margin-top: 5px;">
-                                    ⭐ ${filme.avaliacao_imdb || filme.avaliacao || 'N/A'}/10
-                                </span>
-                            </div>
-                            
-                            ${filme.onde_assistir ? `
-                                <div>
-                                    <strong style="color: var(--text-secondary);">Onde assistir:</strong><br>
-                                    <div style="margin-top: 5px;">
-                                        ${filme.onde_assistir.map(plataforma => 
-                                            `<span style="display: inline-block; background: #e3f2fd; 
-                                                      color: #1976d2; padding: 0.4rem 1rem; 
-                                                      margin: 0.3rem; border-radius: 6px; 
-                                                      font-size: 0.9rem; font-weight: 500;">${plataforma}</span>`
-                                        ).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
+    // Atualiza página
+    const pageInfo = document.getElementById('pageInfo');
+    if (pageInfo) {
+        pageInfo.textContent = 'Página ' + state.currentPage;
+    }
+}
+
+// ATUALIZAR PAGINAÇÃO
+function updatePagination() {
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    const pageIndicator = document.getElementById('pageIndicator');
+    
+    if (prevBtn && nextBtn && pageIndicator) {
+        prevBtn.disabled = state.currentPage <= 1;
+        nextBtn.disabled = state.currentPage >= state.totalPages;
+        pageIndicator.textContent = 'Página ' + state.currentPage + ' de ' + state.totalPages;
+    }
+}
+
+// ATUALIZAR STATUS BACKEND
+function updateBackendStatus(connected) {
+    const statusEl = document.getElementById('backendStatus');
+    if (statusEl) {
+        if (connected) {
+            statusEl.textContent = 'Conectado ✓';
+            statusEl.style.color = '#2ecc71';
+        } else {
+            statusEl.textContent = 'Desconectado ✗';
+            statusEl.style.color = '#e74c3c';
+        }
+    }
+}
+
+// MOSTRAR/ESCONDER LOADING
+function showLoading(show) {
+    // Você pode adicionar um loading spinner específico aqui
+    const moviesGrid = document.getElementById('moviesGrid');
+    if (moviesGrid && show) {
+        moviesGrid.innerHTML = '<div class="loading">Carregando filmes...</div>';
+    }
+}
+
+// MOSTRAR ERRO
+function showError() {
+    const app = document.getElementById('app');
+    if (app) {
+        app.innerHTML = `
+            <div class="error-screen">
+                <div class="error-icon">⚠️</div>
+                <h2>Erro de Conexão</h2>
+                <p>Não foi possível conectar ao servidor.</p>
+                <p class="error-details">
+                    Verifique se o backend está rodando em localhost:3001
+                </p>
+                <div class="error-actions">
+                    <button onclick="location.reload()" class="error-btn">
+                        Recarregar
+                    </button>
+                    <button onclick="testBackend()" class="error-btn secondary">
+                        Testar Backend
+                    </button>
                 </div>
             </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    document.getElementById('modalDetalhes').style.display = 'block';
+        `;
+    }
 }
 
-// =========== FECHAR MODAL ===========
-window.fecharModal = function() {
-    const modal = document.getElementById('modalDetalhes');
-    if (modal) {
-        modal.remove();
+// FILMES MOCK (fallback)
+function getMockMovies() {
+    return [
+        {
+            id: 1,
+            title: 'Filme de Exemplo 1',
+            overview: 'Esta é uma descrição de exemplo para testar o frontend.',
+            release_date: '2023-01-01',
+            vote_average: 7.5,
+            original_language: 'pt',
+            production_country: 'Brasil',
+            language_name: 'Português'
+        },
+        {
+            id: 2,
+            title: 'Exemplo de Filme Internacional',
+            overview: 'Outro filme de exemplo para demonstração.',
+            release_date: '2023-05-15',
+            vote_average: 8.0,
+            original_language: 'en',
+            production_country: 'EUA',
+            language_name: 'Inglês'
+        }
+    ];
+}
+
+// TESTAR BACKEND
+window.testBackend = async function() {
+    try {
+        const response = await fetch(API_BASE + '/health');
+        const data = await response.json();
+        alert('Backend: ' + data.status + '\nTMDB: ' + (data.tmdb || 'N/A'));
+    } catch (error) {
+        alert('Backend OFFLINE!\nErro: ' + error.message);
     }
 };
 
-// =========== MOSTRAR ERRO ===========
-function mostrarErro(mensagem) {
-    estado.elementos.loading.style.display = 'none';
-    estado.elementos.app.style.display = 'none';
-    estado.elementos.error.style.display = 'block';
-    estado.elementos.error.innerHTML = mensagem;
-}
+// ADICIONAR CSS PARA COMPONENTES EXTRAS
+const extraStyles = document.createElement('style');
+extraStyles.textContent = `
+    .no-results {
+        grid-column: 1/-1;
+        text-align: center;
+        padding: 50px;
+        color: #8d99ae;
+    }
+    
+    .no-results-icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+    }
+    
+    .loading {
+        grid-column: 1/-1;
+        text-align: center;
+        padding: 50px;
+        color: #8d99ae;
+    }
+    
+    .error-screen {
+        text-align: center;
+        padding: 50px;
+    }
+    
+    .error-icon {
+        font-size: 3rem;
+        color: #e74c3c;
+        margin-bottom: 20px;
+    }
+    
+    .error-details {
+        color: #666;
+        font-size: 0.9rem;
+        margin: 20px 0;
+    }
+    
+    .error-actions {
+        margin-top: 30px;
+    }
+    
+    .error-btn {
+        background: #4361ee;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        margin: 0 10px;
+        cursor: pointer;
+        font-size: 1rem;
+    }
+    
+    .error-btn.secondary {
+        background: #2ecc71;
+    }
+    
+    .modal-movie-content {
+        display: grid;
+        grid-template-columns: 300px 1fr;
+        gap: 30px;
+    }
+    
+    .modal-poster img {
+        width: 100%;
+        border-radius: 10px;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    }
+    
+    .modal-poster-placeholder {
+        height: 400px;
+        background: linear-gradient(45deg, #2a3d66, #415a77);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 4rem;
+        color: rgba(255,255,255,0.2);
+    }
+    
+    .modal-meta {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+    }
+    
+    .modal-rating, .modal-year, .modal-country, .modal-language {
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+    
+    .modal-rating {
+        background: rgba(255,215,0,0.15);
+        color: #FFD700;
+    }
+    
+    .modal-year {
+        background: rgba(67, 97, 238, 0.15);
+        color: #4361ee;
+    }
+    
+    .modal-country {
+        background: rgba(76, 201, 240, 0.15);
+        color: #4cc9f0;
+    }
+    
+    .modal-language {
+        background: rgba(233, 196, 106, 0.15);
+        color: #e9c46a;
+    }
+    
+    .modal-overview {
+        line-height: 1.7;
+        margin: 20px 0;
+        font-size: 1.1rem;
+    }
+    
+    .modal-actions {
+        margin-top: 30px;
+    }
+    
+    .modal-close-btn {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 1rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    @media (max-width: 768px) {
+        .modal-movie-content {
+            grid-template-columns: 1fr;
+        }
+        
+        .modal-poster {
+            max-width: 300px;
+            margin: 0 auto;
+        }
+    }
+`;
+document.head.appendChild(extraStyles);
 
-// =========== ADICIONAR ESTILOS DINÂMICOS ===========
-function adicionarEstilosPaises() {
-    const estilo = document.createElement('style');
-    estilo.textContent = `
-        .btn-pais.ativo {
-            border-color: var(--azul) !important;
-            background: var(--azul-10) !important;
-            transform: translateY(-3px);
-            box-shadow: 0 5px 15px rgba(25, 118, 210, 0.2);
-        }
-        
-        .btn-pais:hover:not(.ativo) {
-            border-color: var(--azul) !important;
-        }
-        
-        .paises-grid::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .paises-grid::-webkit-scrollbar-track {
-            background: var(--card-bg);
-            border-radius: 3px;
-        }
-        
-        .paises-grid::-webkit-scrollbar-thumb {
-            background: var(--text-secondary);
-            border-radius: 3px;
-        }
-        
-        .btn-modo {
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: 2px solid;
-            font-weight: 500;
-        }
-        
-        .btn-modo:hover:not(.ativo) {
-            opacity: 0.8;
-        }
-        
-        :root {
-            --azul-10: rgba(25, 118, 210, 0.1);
-            --border-color: #e0e0e0;
-            --card-bg: #ffffff;
-            --text-primary: #2c3e50;
-            --text-secondary: #666;
-            --text-muted: #888;
-        }
-        
-        [data-theme="dark"] {
-            --border-color: #444;
-            --card-bg: #2c3e50;
-            --text-primary: #ffffff;
-            --text-secondary: #b0b0b0;
-            --text-muted: #888;
-        }
-    `;
-    document.head.appendChild(estilo);
-}
-
-// =========== INICIALIZAÇÃO FINAL ===========
-adicionarEstilosPaises();
-
-// Exportar funções globais
-window.mostrarDetalhesFilme = mostrarDetalhesFilme;
-window.mudarTema = mudarTema;
-window.carregarFilmesTemaAtivo = carregarFilmesTemaAtivo;
-window.fecharModal = fecharModal;
-
-console.log('✅ Sistema global carregado!');
-console.log('%c✨ CineWorld - Recomendações de Filmes PRONTA! ✨', 'font-size: 18px; color: #1976d2; font-weight: bold;');
-console.log('%cAgora com TODOS os países do mundo! 🌍', 'color: #666;');
+console.log('Frontend carregado!');
