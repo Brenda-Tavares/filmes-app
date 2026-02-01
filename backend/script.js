@@ -1,468 +1,314 @@
 /**
- * 🎬 FILMOTECA TMDB • Desenvolvido por Alabaster Developer
+ * 🎬 CineWorld • Desenvolvido por Alabaster Developer
  * 📅 2026 • Integração com API TMDB
  * 🐙 github.com/Brenda-Tavares
  */
 
-console.log('%c🎬 Filmoteca TMDB', 'color: #d32f2f; font-weight: bold; font-size: 16px;');
-console.log('%cConectando à API TMDB...', 'color: #666;');
+const express = require('express');
+const cors = require('cors');
+const axios = require('axios');
 
-// =========== CONFIGURAÇÃO ===========
-const API_BASE = 'http://localhost:3001/api';
+const app = express();
+const PORT = 3001;
 
-// =========== ESTADO DA APLICAÇÃO ===========
-let estado = {
-    temaAtivo: 'cinema-brasileiro',
-    filmes: {},
-    temas: [],
-    elementos: {}
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Banco de dados LOCAL com filmes específicos por país
+const FILMES_POR_PAIS = {
+    // BRASIL - Filmes brasileiros REAIS
+    'BR': [
+        {
+            id: 598,
+            title: 'Cidade de Deus',
+            overview: 'Dois jovens seguem caminhos diferentes na violenta Cidade de Deus no Rio de Janeiro.',
+            release_date: '2002-08-30',
+            vote_average: 8.6,
+            poster_path: '/k7eYdWvhYQyRQoU2TB2A2Xu2TfD.jpg',
+            original_language: 'pt',
+            original_title: 'Cidade de Deus',
+            production_countries: [{ iso_3166_1: 'BR', name: 'Brasil' }]
+        },
+        {
+            id: 7347,
+            title: 'Tropa de Elite',
+            overview: 'Capitão Nascimento lida com violência e corrupção no Rio de Janeiro.',
+            release_date: '2007-10-05',
+            vote_average: 8.0,
+            poster_path: '/7gLQpAqFpXHtEjjW0gKG6P2jF8h.jpg',
+            original_language: 'pt',
+            original_title: 'Tropa de Elite',
+            production_countries: [{ iso_3166_1: 'BR', name: 'Brasil' }]
+        }
+    ],
+    
+    // REINO UNIDO - Filmes britânicos
+    'GB': [
+        {
+            id: 16869,
+            title: '007 - Cassino Royale',
+            overview: 'Primeira missão de James Bond como agente 007.',
+            release_date: '2006-11-17',
+            vote_average: 7.5,
+            poster_path: '/tGLO9zw5ZtCeyyWjJXoGsNtLaIu.jpg',
+            original_language: 'en',
+            original_title: 'Casino Royale',
+            production_countries: [{ iso_3166_1: 'GB', name: 'Reino Unido' }, { iso_3166_1: 'US', name: 'Estados Unidos' }]
+        },
+        {
+            id: 11324,
+            title: 'O Discurso do Rei',
+            overview: 'Rei George VI supera sua gagueira com a ajuda de um fonoaudiólogo.',
+            release_date: '2010-12-10',
+            vote_average: 7.7,
+            poster_path: '/k3to7QEdcDZqEBZNRAOMnP7u3u9.jpg',
+            original_language: 'en',
+            original_title: 'The King\'s Speech',
+            production_countries: [{ iso_3166_1: 'GB', name: 'Reino Unido' }]
+        }
+    ],
+    
+    // AUSTRÁLIA - Filmes australianos
+    'AU': [
+        {
+            id: 954,
+            title: 'Mad Max: Estrada da Fúria',
+            overview: 'Max se junta a um grupo fugindo através do deserto em um caminhão de guerra.',
+            release_date: '2015-05-15',
+            vote_average: 7.6,
+            poster_path: '/k2jqWnEwLh8Q6qe8otkYtPMt0et.jpg',
+            original_language: 'en',
+            original_title: 'Mad Max: Fury Road',
+            production_countries: [{ iso_3166_1: 'AU', name: 'Austrália' }, { iso_3166_1: 'US', name: 'Estados Unidos' }]
+        },
+        {
+            id: 451,
+            title: 'Crocodilo Dundee',
+            overview: 'Um repórter americano viaja para a Austrália para entrevistar um caçador de crocodilos.',
+            release_date: '1986-09-26',
+            vote_average: 6.4,
+            poster_path: '/fQ4dZiKJcHqyfG40sTfX8ucO7LD.jpg',
+            original_language: 'en',
+            original_title: 'Crocodile Dundee',
+            production_countries: [{ iso_3166_1: 'AU', name: 'Austrália' }]
+        }
+    ],
+    
+    // CANADÁ - Filmes canadenses
+    'CA': [
+        {
+            id: 38757,
+            title: 'A História Sem Fim',
+            overview: 'Um garoto descobre um livro mágico que o transporta para um mundo de fantasia.',
+            release_date: '1984-04-06',
+            vote_average: 7.2,
+            poster_path: '/8g6gKx9ZzBRjV7bVmoOq1oU5aZS.jpg',
+            original_language: 'en',
+            original_title: 'The NeverEnding Story',
+            production_countries: [{ iso_3166_1: 'DE', name: 'Alemanha' }, { iso_3166_1: 'CA', name: 'Canadá' }]
+        },
+        {
+            id: 275,
+            title: 'A Bela e a Fera',
+            overview: 'Um príncipe é transformado em uma fera e deve encontrar amor verdadeiro.',
+            release_date: '1991-11-22',
+            vote_average: 7.6,
+            poster_path: '/mJrL3mp5M6pOvPzCb9e88oBE0P5.jpg',
+            original_language: 'en',
+            original_title: 'Beauty and the Beast',
+            production_countries: [{ iso_3166_1: 'US', name: 'Estados Unidos' }, { iso_3166_1: 'CA', name: 'Canadá' }]
+        }
+    ],
+    
+    // FRANÇA - Filmes franceses
+    'FR': [
+        {
+            id: 38,
+            title: 'Amélie Poulain',
+            overview: 'Uma jovem decide mudar a vida das pessoas ao seu redor em Paris.',
+            release_date: '2001-04-25',
+            vote_average: 7.8,
+            poster_path: '/fNOH9f1aA3fPsg7bE6rC0boeY7j.jpg',
+            original_language: 'fr',
+            original_title: 'Le Fabuleux Destin d\'Amélie Poulain',
+            production_countries: [{ iso_3166_1: 'FR', name: 'França' }]
+        }
+    ],
+    
+    // JAPÃO - Filmes japoneses
+    'JP': [
+        {
+            id: 129,
+            title: 'A Viagem de Chihiro',
+            overview: 'Uma garota entra em um mundo de espíritos.',
+            release_date: '2001-07-20',
+            vote_average: 8.5,
+            poster_path: '/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg',
+            original_language: 'ja',
+            original_title: '千と千尋の神隠し',
+            production_countries: [{ iso_3166_1: 'JP', name: 'Japão' }]
+        }
+    ],
+    
+    // CORÉIA DO SUL - Filmes coreanos
+    'KR': [
+        {
+            id: 496243,
+            title: 'Parasita',
+            overview: 'Uma família pobre se infiltra na vida de uma família rica.',
+            release_date: '2019-05-30',
+            vote_average: 8.5,
+            poster_path: '/igw938inb6M5N2KLeq9KUF6pMOh.jpg',
+            original_language: 'ko',
+            original_title: '기생충',
+            production_countries: [{ iso_3166_1: 'KR', name: 'Coreia do Sul' }]
+        }
+    ],
+    
+    // MUNDIAL - Filmes populares
+    'world': [
+        {
+            id: 278,
+            title: 'Um Sonho de Liberdade',
+            overview: 'Um banqueiro é condenado por um crime que não cometeu.',
+            release_date: '1994-09-23',
+            vote_average: 8.7,
+            poster_path: '/hBcY0fE9pfXzvVaY4GKarweriG2.jpg',
+            original_language: 'en',
+            original_title: 'The Shawshank Redemption',
+            production_countries: [{ iso_3166_1: 'US', name: 'Estados Unidos' }]
+        },
+        {
+            id: 238,
+            title: 'O Poderoso Chefão',
+            overview: 'História da família mafiosa Corleone.',
+            release_date: '1972-03-24',
+            vote_average: 8.7,
+            poster_path: '/oJagOzBu9Rdd9BrciseCm3U3MCU.jpg',
+            original_language: 'en',
+            original_title: 'The Godfather',
+            production_countries: [{ iso_3166_1: 'US', name: 'Estados Unidos' }]
+        }
+    ]
 };
 
-// =========== QUANDO A PÁGINA CARREGAR ===========
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('📄 DOM carregado - INICIANDO APP TMDB');
-    
-    // Inicializar elementos
-    inicializarElementos();
-    
-    // Iniciar tema escuro/claro
-    iniciarTema();
-    
-    // Carregar dados da API TMDB
-    carregarDados();
+// Rota principal
+app.get('/', (req, res) => {
+    res.json({ 
+        message: '🎬 CineWorld - Filmes por Produção',
+        status: 'online',
+        ano: 2026,
+        filmes_por_pais: Object.keys(FILMES_POR_PAIS).length
+    });
 });
 
-// =========== INICIALIZAR ELEMENTOS DOM ===========
-function inicializarElementos() {
-    estado.elementos = {
-        loading: document.getElementById('loading'),
-        app: document.getElementById('app'),
-        error: document.getElementById('error'),
-        navTemas: document.getElementById('navTemas'),
-        temasBotoes: document.getElementById('temasBotoes'),
-        filmesGrid: null,
-        secaoTema: null
-    };
-}
-
-// =========== TEMA ESCURO/CLARO ===========
-function iniciarTema() {
-    const temaSalvo = localStorage.getItem('tema') || 'auto';
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    
-    if (temaSalvo === 'dark' || (temaSalvo === 'auto' && prefersDark)) {
-        document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-        document.documentElement.setAttribute('data-theme', 'light');
-    }
-}
-
-// =========== CARREGAR DADOS DA API TMDB ===========
-async function carregarDados() {
-    console.log('🎬 Iniciando carregamento de dados da API TMDB...');
-    
-    try {
-        // 1. Carrega filmes brasileiros da API
-        console.log('1. Buscando filmes brasileiros...');
-        const respostaBR = await fetch(`${API_BASE}/filmes/brasileiros`);
-        const dadosBR = await respostaBR.json();
-        
-        if (!dadosBR.sucesso) {
-            throw new Error(`API BR: ${dadosBR.erro || 'Erro desconhecido'}`);
-        }
-        
-        // 2. Carrega filmes internacionais da API
-        console.log('2. Buscando filmes internacionais...');
-        const respostaINT = await fetch(`${API_BASE}/filmes/internacionais`);
-        const dadosINT = await respostaINT.json();
-        
-        if (!dadosINT.sucesso) {
-            throw new Error(`API INT: ${dadosINT.erro || 'Erro desconhecido'}`);
-        }
-        
-        // 3. Carrega temas do JSON local
-        console.log('3. Carregando temas locais...');
-        const respostaTemas = await fetch('data/temas.json');
-        const temasData = await respostaTemas.json();
-        
-        // 4. Organiza dados no formato que seu app espera
-        estado.filmes = {
-            'cinema-brasileiro': dadosBR.filmes || [],
-            'amores-proibidos': dadosINT.filmes || []
-        };
-        
-        estado.temas = temasData.temas || [];
-        
-        console.log('✅ Dados carregados com sucesso!');
-        console.log(`   🇧🇷 ${dadosBR.filmes?.length || 0} filmes brasileiros`);
-        console.log(`   🌍 ${dadosINT.filmes?.length || 0} filmes internacionais`);
-        console.log(`   🎭 ${estado.temas.length} temas carregados`);
-        
-        // 5. Mostra navegação
-        estado.elementos.navTemas.style.display = 'block';
-        renderizarNavegacaoTemas();
-        carregarFilmesTemaAtivo();
-        
-        // 6. Esconde loading, mostra app
-        estado.elementos.loading.style.display = 'none';
-        estado.elementos.app.style.display = 'block';
-        
-    } catch (erro) {
-        console.error('❌ Erro ao carregar dados:', erro);
-        mostrarErro(`
-            <h3>⚠️ Problema de conexão</h3>
-            <p>Não foi possível conectar ao servidor de filmes.</p>
-            <p><strong>Erro:</strong> ${erro.message}</p>
-            <p style="margin-top: 15px;">
-                <button onclick="location.reload()" class="btn-detalhes">
-                    🔄 Tentar novamente
-                </button>
-                <button onclick="carregarDadosLocais()" class="btn-detalhes" style="margin-left: 10px;">
-                    📂 Usar dados locais
-                </button>
-            </p>
-        `);
-    }
-}
-
-// =========== FALLBACK: DADOS LOCAIS ===========
-async function carregarDadosLocais() {
-    console.log('🔄 Usando dados locais de backup...');
-    
-    try {
-        const respostaFilmes = await fetch('data/filmes.json');
-        const dadosFilmes = await respostaFilmes.json();
-        
-        const respostaTemas = await fetch('data/temas.json');
-        const dadosTemas = await respostaTemas.json();
-        
-        estado.filmes = dadosFilmes;
-        estado.temas = dadosTemas.temas || [];
-        
-        estado.elementos.navTemas.style.display = 'block';
-        renderizarNavegacaoTemas();
-        carregarFilmesTemaAtivo();
-        
-        estado.elementos.loading.style.display = 'none';
-        estado.elementos.app.style.display = 'block';
-        estado.elementos.error.style.display = 'none';
-        
-        console.log('✅ Dados locais carregados');
-        
-    } catch (erroLocal) {
-        console.error('❌ Erro nos dados locais:', erroLocal);
-        mostrarErro('Não foi possível carregar nenhum dado. Verifique sua conexão.');
-    }
-}
-
-// =========== RENDERIZAR NAVEGAÇÃO DE TEMAS ===========
-function renderizarNavegacaoTemas() {
-    console.log('🎨 Renderizando botões de temas...');
-    
-    const container = estado.elementos.temasBotoes;
-    container.innerHTML = '';
-    
-    if (estado.temas.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-secondary);">Nenhum tema encontrado</p>';
-        return;
-    }
-    
-    estado.temas.forEach(tema => {
-        const qtdFilmes = estado.filmes[tema.id]?.length || 0;
-        
-        if (qtdFilmes > 0) {
-            const botao = document.createElement('button');
-            botao.className = `btn-tema ${tema.id === estado.temaAtivo ? 'ativo' : ''}`;
-            botao.dataset.tema = tema.id;
-            botao.title = `Clique para ver ${qtdFilmes} filme(s)`;
-            
-            botao.innerHTML = `
-                <span class="tema-icone">${tema.icone || '🎬'}</span>
-                <div class="tema-info">
-                    <div class="tema-nome">${tema.nome}</div>
-                    <div class="tema-contador">${qtdFilmes} filme${qtdFilmes !== 1 ? 's' : ''}</div>
-                </div>
-            `;
-            
-            botao.addEventListener('click', () => {
-                console.log(`🖱️ Clicou no tema: ${tema.id}`);
-                mudarTema(tema.id);
-            });
-            
-            container.appendChild(botao);
-        }
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'ONLINE',
+        timestamp: new Date().toISOString(),
+        ano: 2026,
+        paises_com_filmes: Object.keys(FILMES_POR_PAIS).join(', ')
     });
-}
-
-// =========== MUDAR TEMA ===========
-function mudarTema(novoTema) {
-    console.log(`🔄 Mudando tema: ${estado.temaAtivo} → ${novoTema}`);
-    
-    if (!estado.filmes[novoTema]) {
-        console.error(`❌ Tema ${novoTema} não encontrado!`);
-        return;
-    }
-    
-    estado.temaAtivo = novoTema;
-    
-    document.querySelectorAll('.btn-tema').forEach(botao => {
-        const isAtivo = botao.dataset.tema === novoTema;
-        botao.classList.toggle('ativo', isAtivo);
-    });
-    
-    carregarFilmesTemaAtivo();
-}
-
-// =========== CARREGAR FILMES DO TEMA ATIVO ===========
-function carregarFilmesTemaAtivo() {
-    const filmesTema = estado.filmes[estado.temaAtivo] || [];
-    const temaInfo = estado.temas.find(t => t.id === estado.temaAtivo);
-    
-    console.log(`🎬 Carregando ${filmesTema.length} filmes do tema: ${temaInfo?.nome || estado.temaAtivo}`);
-    
-    if (filmesTema.length === 0) {
-        console.error(`❌ Nenhum filme no tema ${estado.temaAtivo}!`);
-        mostrarErro(`Nenhum filme encontrado para "${temaInfo?.nome || estado.temaAtivo}"`);
-        return;
-    }
-    
-    renderizarApp(filmesTema, temaInfo);
-}
-
-// =========== RENDERIZAR APLICAÇÃO ===========
-function renderizarApp(filmesLista, temaInfo) {
-    console.log(`🎨 Renderizando ${filmesLista.length} filmes...`);
-    
-    const corTema = temaInfo?.cor || '#d32f2f';
-    
-    let html = `
-        <div class="secao-tema" id="secaoTema" style="border-left: 5px solid ${corTema};">
-            <h2>${temaInfo ? temaInfo.nome : '🎬 Filmes Recomendados'}</h2>
-            ${temaInfo ? `<p class="descricao-tema">${temaInfo.descricao}</p>` : ''}
-        </div>
-        
-        <div class="filmes-grid" id="filmesGrid">
-    `;
-    
-    filmesLista.forEach((filme, index) => {
-        html += criarCardFilme(filme, index, corTema);
-    });
-    
-    html += `
-        </div>
-        
-        <div class="footer-app" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">
-            <p>🎭 ${filmesLista.length} filme${filmesLista.length !== 1 ? 's' : ''} encontrado${filmesLista.length !== 1 ? 's' : ''} em "${temaInfo?.nome || 'este tema'}"</p>
-        </div>
-    `;
-    
-    estado.elementos.app.innerHTML = html;
-    
-    estado.elementos.filmesGrid = document.getElementById('filmesGrid');
-    estado.elementos.secaoTema = document.getElementById('secaoTema');
-    
-    document.querySelectorAll('.btn-detalhes').forEach((botao, index) => {
-        botao.addEventListener('click', () => mostrarDetalhesFilme(index));
-    });
-    
-    console.log(`✅ ${filmesLista.length} filmes renderizados`);
-}
-
-// =========== CRIAR CARD DE FILME ===========
-function criarCardFilme(filme, index, corTema) {
-    const temImagem = filme.cartaz_url || filme.cartaz;
-    
-    return `
-        <div class="filme-card" data-index="${index}">
-            <div class="filme-imagem" style="
-                position: relative;
-                height: 200px;
-                overflow: hidden;
-                ${!temImagem ? `background: linear-gradient(135deg, ${corTema}40, ${corTema}70);` : ''}
-            ">
-                ${temImagem ? `
-                    <img src="${filme.cartaz_url || filme.cartaz}" 
-                         alt="${filme.titulo_pt}"
-                         style="
-                             width: 100%;
-                             height: 100%;
-                             object-fit: cover;
-                             position: absolute;
-                             top: 0;
-                             left: 0;
-                         "
-                         onerror="
-                             this.style.display='none';
-                             this.parentElement.style.background = 'linear-gradient(135deg, ${corTema}40, ${corTema}70)';
-                         ">
-                    
-                    <div style="
-                        position: absolute;
-                        top: 0;
-                        left: 0;
-                        right: 0;
-                        bottom: 0;
-                        background: linear-gradient(to bottom, transparent 40%, rgba(0,0,0,0.7) 90%);
-                        z-index: 1;
-                    "></div>
-                ` : ''}
-                
-                <div style="
-                    position: absolute;
-                    bottom: 15px;
-                    left: 0;
-                    right: 0;
-                    text-align: center;
-                    color: white;
-                    z-index: 2;
-                    padding: 0 15px;
-                ">
-                    <div style="
-                        font-size: 2rem;
-                        margin-bottom: 5px;
-                        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-                    ">
-                        ${filme.bandeira || '🎬'}
-                    </div>
-                    <div style="
-                        font-size: 1rem;
-                        font-weight: bold;
-                        background: rgba(0,0,0,0.6);
-                        display: inline-block;
-                        padding: 5px 15px;
-                        border-radius: 15px;
-                        backdrop-filter: blur(4px);
-                        border: 1px solid rgba(255,255,255,0.2);
-                    ">
-                        ${filme.pais}
-                    </div>
-                </div>
-            </div>
-            
-            <div class="filme-info">
-                <h3 class="filme-titulo">${filme.titulo_pt}</h3>
-                <p class="filme-detalhes">
-                    ${filme.diretor || 'Diretor não disponível'} • ${filme.ano}
-                </p>
-                
-                <p class="filme-sinopse">
-                    ${filme.sinopse?.substring(0, 120) || 'Sinopse não disponível.'}...
-                </p>
-                
-                <div class="filme-rodape">
-                    <div class="avaliacao">
-                        <span>⭐</span>
-                        <span>${filme.avaliacao_imdb || filme.avaliacao || 'N/A'}/10</span>
-                    </div>
-                    
-                    <button class="btn-detalhes" data-index="${index}">
-                        Ver detalhes
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// =========== MOSTRAR DETALHES DO FILME ===========
-function mostrarDetalhesFilme(index) {
-    const filmesTema = estado.filmes[estado.temaAtivo] || [];
-    const filme = filmesTema[index];
-    const temaInfo = estado.temas.find(t => t.id === estado.temaAtivo);
-    const corTema = temaInfo?.cor || '#d32f2f';
-    
-    const modalHTML = `
-        <div class="modal" id="modalDetalhes">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, ${corTema} 0%, var(--preto) 100%);">
-                    <button class="close-modal" onclick="fecharModal()">×</button>
-                    <h2>${filme.titulo_pt}</h2>
-                    <p style="opacity: 0.9; margin-top: 5px;">
-                        ${filme.bandeira || ''} ${filme.pais} • ${filme.ano}
-                    </p>
-                </div>
-                
-                <div class="modal-body">
-                    ${(filme.cartaz_url || filme.cartaz) ? `
-                        <div style="text-align: center; margin-bottom: 1.5rem;">
-                            <img src="${filme.cartaz_url || filme.cartaz}" 
-                                 alt="${filme.titulo_pt}" 
-                                 style="
-                                     max-width: 250px;
-                                     border-radius: 8px;
-                                     box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-                                 "
-                                 onerror="this.style.display='none'">
-                        </div>
-                    ` : ''}
-                    
-                    <div style="margin-bottom: 2rem;">
-                        <h3 style="color: ${corTema}; margin-bottom: 1rem;">📖 Sinopse</h3>
-                        <p style="line-height: 1.6; font-size: 1.05rem;">${filme.sinopse || 'Sinopse não disponível.'}</p>
-                    </div>
-                    
-                    <div style="background: ${corTema}10; padding: 1.8rem; border-radius: 10px; margin-bottom: 2rem;">
-                        <h3 style="color: ${corTema}; margin-bottom: 1.2rem;">📊 Informações</h3>
-                        
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                            <div>
-                                <strong style="color: var(--text-secondary);">Avaliação:</strong><br>
-                                <span style="color: #f39c12; font-size: 1.4rem; font-weight: bold; display: inline-block; margin-top: 5px;">
-                                    ⭐ ${filme.avaliacao_imdb || filme.avaliacao || 'N/A'}/10
-                                </span>
-                            </div>
-                            
-                            ${filme.onde_assistir ? `
-                                <div>
-                                    <strong style="color: var(--text-secondary);">Onde assistir:</strong><br>
-                                    <div style="margin-top: 5px;">
-                                        ${filme.onde_assistir.map(plataforma => 
-                                            `<span style="display: inline-block; background: #e3f2fd; 
-                                                      color: #1976d2; padding: 0.4rem 1rem; 
-                                                      margin: 0.3rem; border-radius: 6px; 
-                                                      font-size: 0.9rem; font-weight: 500;">${plataforma}</span>`
-                                        ).join('')}
-                                    </div>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
-    document.getElementById('modalDetalhes').style.display = 'block';
-}
-
-// =========== FECHAR MODAL ===========
-window.fecharModal = function() {
-    const modal = document.getElementById('modalDetalhes');
-    if (modal) {
-        modal.remove();
-    }
-};
-
-// Fechar modal ao clicar fora
-document.addEventListener('click', function(event) {
-    const modal = document.getElementById('modalDetalhes');
-    if (modal && event.target === modal) {
-        fecharModal();
-    }
 });
 
-// =========== MOSTRAR ERRO ===========
-function mostrarErro(mensagem) {
-    estado.elementos.loading.style.display = 'none';
-    estado.elementos.app.style.display = 'none';
-    estado.elementos.error.style.display = 'block';
-    estado.elementos.error.innerHTML = mensagem;
-}
+// Países
+app.get('/api/countries', (req, res) => {
+    const countries = [
+        { code: 'world', name: 'Mundial', flag: '🌍', description: 'Filmes populares do mundo todo' },
+        { code: 'BR', name: '🇧🇷 Brasil', flag: '🇧🇷', description: 'Cinema brasileiro' },
+        { code: 'US', name: '🇺🇸 EUA', flag: '🇺🇸', description: 'Hollywood' },
+        { code: 'GB', name: '🇬🇧 Reino Unido', flag: '🇬🇧', description: 'Cinema britânico' },
+        { code: 'AU', name: '🇦🇺 Austrália', flag: '🇦🇺', description: 'Cinema australiano' },
+        { code: 'CA', name: '🇨🇦 Canadá', flag: '🇨🇦', description: 'Cinema canadense' },
+        { code: 'FR', name: '🇫🇷 França', flag: '🇫🇷', description: 'Cinema francês' },
+        { code: 'JP', name: '🇯🇵 Japão', flag: '🇯🇵', description: 'Cinema japonês' },
+        { code: 'KR', name: '🇰🇷 Coreia do Sul', flag: '🇰🇷', description: 'Cinema coreano' },
+        { code: 'DE', name: '🇩🇪 Alemanha', flag: '🇩🇪', description: 'Cinema alemão' },
+        { code: 'IT', name: '🇮🇹 Itália', flag: '🇮🇹', description: 'Cinema italiano' },
+        { code: 'ES', name: '🇪🇸 Espanha', flag: '🇪🇸', description: 'Cinema espanhol' },
+        { code: 'MX', name: '🇲🇽 México', flag: '🇲🇽', description: 'Cinema mexicano' },
+        { code: 'IN', name: '🇮🇳 Índia', flag: '🇮🇳', description: 'Bollywood' }
+    ];
+    
+    res.json({ 
+        success: true, 
+        countries: countries,
+        total: countries.length,
+        ano: 2026
+    });
+});
 
-// =========== EXPORTAR FUNÇÕES GLOBAIS ===========
-window.mostrarDetalhesFilme = mostrarDetalhesFilme;
-window.mudarTema = mudarTema;
-window.carregarDadosLocais = carregarDadosLocais;
+// Buscar filmes - SEMPRE RETORNA FILMES ESPECÍFICOS
+app.get('/api/movies', (req, res) => {
+    const country = req.query.country || 'world';
+    const page = parseInt(req.query.page) || 1;
+    
+    console.log(`🎬 Buscando filmes para: ${country}`);
+    
+    // SEMPRE retorna filmes específicos do país
+    let movies = FILMES_POR_PAIS[country] || FILMES_POR_PAIS['world'];
+    
+    // Se for EUA e não tiver filmes específicos, usar mundial
+    if (country === 'US' && !FILMES_POR_PAIS[country]) {
+        movies = FILMES_POR_PAIS['world'];
+    }
+    
+    // Garantir que sempre tenha filmes
+    if (!movies || movies.length === 0) {
+        movies = FILMES_POR_PAIS['world'];
+    }
+    
+    // Paginação simples
+    const pageSize = 20;
+    const startIndex = (page - 1) * pageSize;
+    const paginatedMovies = movies.slice(startIndex, startIndex + pageSize);
+    
+    res.json({
+        success: true,
+        page: page,
+        totalPages: Math.ceil(movies.length / pageSize),
+        totalResults: movies.length,
+        movies: paginatedMovies,
+        country: country,
+        ano: 2026,
+        fonte: 'Dados locais por produção',
+        observacao: 'Filmes específicos de cada país'
+    });
+});
 
-console.log('✅ Script TMDB carregado! Pronto para conectar...');
+// Rota para ver todos os filmes de um país
+app.get('/api/pais/:codigo/filmes', (req, res) => {
+    const codigo = req.params.codigo.toUpperCase();
+    const filmes = FILMES_POR_PAIS[codigo] || [];
+    
+    res.json({
+        success: true,
+        pais: codigo,
+        total_filmes: filmes.length,
+        filmes: filmes,
+        producoes: filmes.map(f => 
+            f.production_countries?.map(p => p.name).join(', ') || 'Desconhecido'
+        )
+    });
+});
+
+// Iniciar servidor
+app.listen(PORT, () => {
+    const ano = new Date().getFullYear();
+    console.log('\n' + '='.repeat(60));
+    console.log(`CINEWORLD ${ano} - FILMES POR PRODUÇÃO!`);
+    console.log('='.repeat(60));
+    console.log(`URL: http://localhost:${PORT}`);
+    console.log(`Ano: ${ano}`);
+    console.log(`Filmes por país: ${Object.keys(FILMES_POR_PAIS).length} países`);
+    console.log('='.repeat(60));
+    console.log('\n TESTES:');
+    console.log(`Brasil: http://localhost:${PORT}/api/movies?country=BR`);
+    console.log(`Reino Unido: http://localhost:${PORT}/api/movies?country=GB`);
+    console.log(`Austrália: http://localhost:${PORT}/api/movies?country=AU`);
+    console.log(`Canadá: http://localhost:${PORT}/api/movies?country=CA`);
+    console.log(`Ver filmes BR: http://localhost:${PORT}/api/pais/BR/filmes`);
+    console.log('='.repeat(60) + '\n');
+});
