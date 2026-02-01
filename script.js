@@ -1,5 +1,5 @@
 /**
- *  CineWorld - Recomendações de Filmes • Desenvolvido por Alabaster Developer */
+ *  CineWorld • Desenvolvido por Alabaster Developer */
 // CONFIGURAÇÃO
 const API_BASE = 'http://localhost:3001/api';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/w500';
@@ -661,3 +661,4 @@ extraStyles.textContent = `
 document.head.appendChild(extraStyles);
 
 console.log('Frontend carregado!');
+
